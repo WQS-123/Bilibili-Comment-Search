@@ -43,6 +43,38 @@ function injectCommentButtonStyle(shadowRoot: ShadowRoot) {
   shadowRoot.appendChild(style)
 }
 
+/**
+ * 整个B站评论区的结构（需要注入的部分）如下
+ * <body>
+ *  ...
+ *  <div id="app">
+ *    ... 
+ *    <div id="mirror-vdcon">
+ *      ...
+ *      <div class="left-container">
+ *        ...
+ *        <div id="commentapp">
+ *          ...
+ *          <bili-comments>
+ *            shadow-root
+ *            <div id="head">
+ *            <div id="contents">
+ *            <div id="continuations">
+ * 
+ * <div id="head">
+ *  <bili-comments-header-renderer>
+ *  shadow-root
+ *    ...
+ *    <div id="navbar">
+ *      ...
+ *      <div id="sort-actions">
+ * 
+ * <div id="contents">
+ *  ...
+ *  <div id="feed">
+ * 
+ * @param buttonBundleList 新增按钮数组
+ */
 function injectCommentButton(buttonBundleList: ButtonBundle[]) {
   const observerComment = new MutationObserver((mutationsList, observer) => {
     for (let mutation of mutationsList) {
