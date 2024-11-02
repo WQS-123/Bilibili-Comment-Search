@@ -6,7 +6,7 @@ interface ButtonBundle {
   click: ButtonClickFunction;
 }
 
-function createDivider() {
+function createDivider(): HTMLElement {
   let divider = document.createElement('div');
   divider.className = 'sort-div';
   return divider;
@@ -16,6 +16,11 @@ function createButton(text: string): HTMLElement {
   let button = document.createElement('Bilibili-Comment-Button');
   button.innerHTML = text;
   return button;
+}
+
+function createCommentsContainer(): HTMLElement {
+  let container = document.createElement('div');
+  return container;
 }
 
 function injectCommentButtonStyle(shadowRoot: ShadowRoot) {
@@ -53,20 +58,34 @@ function injectCommentButton(buttonBundleList: ButtonBundle[]) {
                 const sortActions = header.shadowRoot?.querySelector('#sort-actions');
 
                 if (sortActions) {
+                  const commentsContents = comments.shadowRoot?.querySelector('#contents');
+                  const commentsContinuations = comments.shadowRoot?.querySelector('#continuations');
+                  const commentsFeed = commentsContents?.querySelector('#feed');
+
+                  if (!commentsContents || !commentsFeed) {
+                    console.error("评论区元素: '#contents' 与 '#feed' 不存在");
+                    shadowObserver.disconnect();
+                  }
+
+                  const commentsContentsElement = commentsContents as HTMLElement;
+                  const commentsContinuationsElement = commentsContinuations as HTMLElement | null | undefined;
+                  const commentsFeedElement = commentsFeed as HTMLElement;
+                  const newCommentsFeedElement = createCommentsContainer();
+
+                  // 插入新的评论区 container
+                  commentsContentsElement.insertBefore(
+                    newCommentsFeedElement,
+                    commentsFeedElement
+                  );
+
                   // 将按钮插入至 #sort-actions 队尾
                   for (let buttonBundle of buttonBundleList) {
                     const button = buttonBundle.button;
                     const click = buttonBundle.click;
-                    const commentContainer = comments.shadowRoot?.querySelector('#contents');
 
                     // 为按钮绑定 click 函数
                     button.addEventListener('click', () => {
-                      if (!commentContainer) {
-                        console.error("评论区元素: '#contents' 不存在");
-                        return;
-                      }
-
-                      click(commentContainer as HTMLElement);
+                      click(newCommentsFeedElement);
                     });
 
                     // 插入按钮
@@ -85,23 +104,39 @@ function injectCommentButton(buttonBundleList: ButtonBundle[]) {
 
                       element.addEventListener('click', function() {
                         // 因为B站原生的两个按钮（最新|最热）包含 shadowRoot，需要进行特判
-                        function setButtonColor(button: HTMLElement, color: string) {
+                        function setButtonState(button: HTMLElement, state: boolean) {
+                          const color = state ? BiliButtonColor.clicked : BiliButtonColor.unclicked;
+
                           if (button.shadowRoot) {
                             const buttonShadowRoot = button.shadowRoot.querySelector('button') as HTMLElement;
                             buttonShadowRoot.style.color = color;
+
+                            if (state) {
+                              commentsFeedElement.style.display = 'block';
+                              if (commentsContinuationsElement) {
+                                commentsContinuationsElement.style.display = 'block';
+                              }
+                            }
                           }
                           else {
                             button.style.color = color;
+
+                            if (state) {
+                              commentsFeedElement.style.display = 'none';
+                              if (commentsContinuationsElement) {
+                                commentsContinuationsElement.style.display = 'none';
+                              }
+                            }
                           }
                         }
 
                         for (let sibling of sortActions.childNodes) {
                           if (sibling.nodeType === Node.ELEMENT_NODE) {
-                            setButtonColor(sibling as HTMLElement, BiliButtonColor.unclicked);
+                            setButtonState(sibling as HTMLElement, false);
                           }
                         }
 
-                        setButtonColor(element, BiliButtonColor.clicked);
+                        setButtonState(element, true);
                       });
                     }
                   }

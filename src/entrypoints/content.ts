@@ -1,5 +1,5 @@
 import { createButton, injectCommentButton } from "@/bilibili-comment-search/components";
-import { clearComments } from "@/bilibili-comment-search/core";
+import { emptyButtonClickFunction } from "@/bilibili-comment-search/core";
 
 export default defineContentScript({
   matches: ['*://*.bilibili.com/video/*'],
@@ -7,11 +7,11 @@ export default defineContentScript({
     injectCommentButton([
       {
         button: createButton('笔记'),
-        click: clearComments
+        click: emptyButtonClickFunction
       },
       {
         button: createButton('搜索'),
-        click: clearComments
+        click: emptyButtonClickFunction
       },
     ]);
   },
