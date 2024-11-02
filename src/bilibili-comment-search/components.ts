@@ -1,4 +1,10 @@
+import { ButtonClickFunction } from './core';
 import { BiliButtonColor } from './constants';
+
+interface ButtonBundle {
+  button: HTMLElement;
+  click: ButtonClickFunction;
+}
 
 function createDivider() {
   let divider = document.createElement('div');
@@ -6,12 +12,9 @@ function createDivider() {
   return divider;
 }
 
-function createButton(text: string, click: () => void): HTMLElement {
+function createButton(text: string): HTMLElement {
   let button = document.createElement('Bilibili-Comment-Button');
-
   button.innerHTML = text;
-  button.addEventListener('click', click);
-
   return button;
 }
 
@@ -34,7 +37,7 @@ function injectCommentButtonStyle(shadowRoot: ShadowRoot) {
   shadowRoot.appendChild(style)
 }
 
-function injectCommentButton(commentButton: HTMLElement[]) {
+function injectCommentButton(buttonBundleList: ButtonBundle[]) {
   const observerComment = new MutationObserver((mutationsList, observer) => {
     for (let mutation of mutationsList) {
       if (mutation.type === 'childList') {
@@ -50,7 +53,17 @@ function injectCommentButton(commentButton: HTMLElement[]) {
 
                 if (sortActions) {
                   // 将新元素插入至 sort-actions 队尾
-                  for (let button of commentButton) {
+                  for (let buttonBundle of buttonBundleList) {
+                    const button = buttonBundle.button;
+                    const click = buttonBundle.click;
+                    const commentContainer = comments.shadowRoot?.querySelector('#contents');
+
+                    button.addEventListener('click', () => {
+                      if (commentContainer) {
+                        click(commentContainer as HTMLElement);
+                      }
+                    });
+
                     sortActions.appendChild(createDivider());
                     sortActions.appendChild(button);
                   }
