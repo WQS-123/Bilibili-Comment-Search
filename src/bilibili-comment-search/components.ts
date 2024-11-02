@@ -21,6 +21,7 @@ function createButton(text: string): HTMLElement {
 function injectCommentButtonStyle(shadowRoot: ShadowRoot) {
   const style = document.createElement('style');
 
+  // 参考（最新|最热）的元素样式
   style.textContent = `
     bilibili-comment-button {
       color: ${BiliButtonColor.unclicked};
@@ -52,18 +53,23 @@ function injectCommentButton(buttonBundleList: ButtonBundle[]) {
                 const sortActions = header.shadowRoot?.querySelector('#sort-actions');
 
                 if (sortActions) {
-                  // 将新元素插入至 sort-actions 队尾
+                  // 将按钮插入至 #sort-actions 队尾
                   for (let buttonBundle of buttonBundleList) {
                     const button = buttonBundle.button;
                     const click = buttonBundle.click;
                     const commentContainer = comments.shadowRoot?.querySelector('#contents');
 
+                    // 为按钮绑定 click 函数
                     button.addEventListener('click', () => {
-                      if (commentContainer) {
-                        click(commentContainer as HTMLElement);
+                      if (!commentContainer) {
+                        console.error("评论区元素: '#contents' 不存在");
+                        return;
                       }
+
+                      click(commentContainer as HTMLElement);
                     });
 
+                    // 插入按钮
                     sortActions.appendChild(createDivider());
                     sortActions.appendChild(button);
                   }
@@ -78,6 +84,7 @@ function injectCommentButton(buttonBundleList: ButtonBundle[]) {
                       }
 
                       element.addEventListener('click', function() {
+                        // 因为B站原生的两个按钮（最新|最热）包含 shadowRoot，需要进行特判
                         function setButtonColor(button: HTMLElement, color: string) {
                           if (button.shadowRoot) {
                             const buttonShadowRoot = button.shadowRoot.querySelector('button') as HTMLElement;
