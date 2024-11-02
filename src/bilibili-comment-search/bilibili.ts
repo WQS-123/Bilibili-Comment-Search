@@ -24,20 +24,54 @@ export interface CommentApiParam {
   ps: string,
 };
 
-export async function fetchComments(param: URLSearchParams) {
+export async function fetchComments(param: URLSearchParams): Promise<[]> {
   const resp = await fetch(`${BiliApi.comments}?${param.toString()}`, {
     method: "GET",
     credentials: 'include'
   });
   const body = await resp.json();
 
-  if (body.code == 0) {
+  if (body.code != 0) {
     console.error(`获取评论区数据失败: ${body.message}`);
+    return [];
   }
 
-  console.log(body.data.replies);
-
-  if (body.data.page.count == 0) {
-    // break;
+  if (body.data.top_replies) {
+    body.data.replies.unshift(body.data.top_replies);
   }
+
+  return body.data.replies;
+}
+
+export async function fetchAllComments(): Promise<any[]> {
+  let page = 1, count = 0, replies: [] = [];
+  let oid = getOid();
+  
+  if (!oid) {
+    return [];
+  }
+
+  do {
+    let reply = await fetchComments(
+      new URLSearchParams({
+        oid: oid,
+        type: '1',
+        sort: '2',
+        pn: `${page}`,
+        ps: '20'
+      }
+    ));
+
+    if (reply.length == 0) {
+      break;
+    }
+
+    count += reply.length;
+    replies.push(...reply);
+    page++;
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+  } while (true);
+
+  return replies;
 }

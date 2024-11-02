@@ -45,6 +45,7 @@ function injectCommentButtonStyle(shadowRoot: ShadowRoot) {
 
 /**
  * 整个B站评论区的结构（需要注入的部分）如下
+ * 
  * <body>
  *  ...
  *  <div id="app">
@@ -61,6 +62,7 @@ function injectCommentButtonStyle(shadowRoot: ShadowRoot) {
  *            <div id="contents">
  *            <div id="continuations">
  * 
+ * 
  * <div id="head">
  *  <bili-comments-header-renderer>
  *  shadow-root
@@ -68,6 +70,7 @@ function injectCommentButtonStyle(shadowRoot: ShadowRoot) {
  *    <div id="navbar">
  *      ...
  *      <div id="sort-actions">
+ * 
  * 
  * <div id="contents">
  *  ...
@@ -194,6 +197,88 @@ function injectCommentButton(buttonBundleList: ButtonBundle[]) {
   });
 
   observerComment.observe(document.body, { childList: true, subtree: true });
+}
+
+function createBiliComment() {
+  const biliCommentThreadRender = document.createElement('bili-comment-thread-renderer');
+  const biliCommentRenderer = document.createElement('bili-comment-renderer');
+  const body = document.createElement('div');
+  const userAvatar = document.createElement('a');
+  const biliAvatar = document.createElement('bili-avatar');
+  const canvasStyle = document.createElement('style');
+  const canvas = document.createElement('div');
+  const canavsLayers = document.createElement('layers');
+  const canvasLayersCenter = document.createElement('div');
+  const canvasLayersRes = document.createElement('div');
+  const picture = document.createElement('picture');
+  // const 
+
+  biliCommentRenderer.id = 'comment';
+  body.id = 'body';
+  body.className = 'light';
+  userAvatar.target = "_blank"
+  // TODO
+  userAvatar.href = ""
+  biliAvatar.style.cssText = '--avatar-width: 48px; --avatar-height: 48px;';
+  canvasStyle.textContent = `
+    :host {
+      display: inline-block;
+      position: relative;
+      width: var(--avatar-width);
+      height: var(--avatar-height);
+    }
+    #canvas {
+      width: var(--avatar-canvas-width);
+      height: var(--avatar-canvas-height);
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .layers {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+    }
+    .layer {
+      position: absolute;
+      isolation: isolate;
+      overflow: hidden;
+    }
+    .layer.center {
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .layer-res {
+      width: 100%;
+      height: 100%;
+      isolation: isolate;
+      overflow: hidden;
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+    .layer-res picture {
+      display: inline-block;
+    }
+    .layer-res div,
+    .layer-res picture,
+    .layer-res img {
+      width: 100%;
+      height: 100%;
+    }
+  `
+  canvas.id = 'canvas';
+  canavsLayers.className = 'layers';
+  canvasLayersCenter.className = 'layer center';
+  canvasLayersCenter.style.cssText = 'width: 48px; height: 48px; opacity: 1; border-radius: 50%;';
+  canvasLayersRes.className = 'layer-res';
+  // TODO
+  canvasLayersRes.style.cssText = '';
 }
 
 export { createButton, injectCommentButton };
