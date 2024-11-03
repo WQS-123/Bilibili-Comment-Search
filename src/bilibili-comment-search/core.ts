@@ -1,6 +1,7 @@
-import { MemberInfo, CommentInfo, createDivider, createCommentsContainer, createComment } from "@/bilibili-comment-search/components";
-import { getOid, CommentSearchParams, fetchComments, fetchAllComments } from "@/bilibili-comment-search/bilibili";
-import { BiliButtonColor } from './constants';
+import { createDivider, createCommentsContainer, createComment } from "@/bilibili-comment-search/components";
+import { startSearching, stopSearching, isSearching } from "@/bilibili-comment-search/bilibili";
+import { CommentInfo, getOid, CommentSearchParams, fetchComments } from "@/bilibili-comment-search/bilibili";
+import { BiliButtonColor, BiliCommentType } from './constants';
 
 interface ButtonClickFunction {
   (commentContainer: HTMLElement): void;
@@ -28,14 +29,113 @@ function injectCommentButtonStyle(shadowRoot: ShadowRoot) {
     }
   `;
 
-  shadowRoot.appendChild(style)
+  shadowRoot.appendChild(style);
+}
+
+function injectCommentContainerStyle(shadowRoot: ShadowRoot) {
+  const style = document.createElement('style');
+
+  style.textContent = `
+    .bcs-container {
+      position: relative;
+    }
+    .bcs-container a {
+      text-decoration: none;
+      color: inherit;
+    }
+    .bcs-container a:hover {
+      cursor: pointer;
+    }
+    .bcs-avatar {
+      position: absolute;
+      left: 20px;
+      top: 22px;
+      width: 48px;
+      height: 48px;
+      transform-origin: left top;
+      transform: var(--bili-comments-avatar-size);
+      z-index: 10;
+    }
+    .bcs-avatar img:hover {
+      cursor: pointer;
+    }
+    .bcs-avatar img {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      z-index: 10;
+    }
+    .bcs-main {
+      position: relative;
+      padding-left: 80px;
+      padding-top: 22px;
+    }
+    .bcs-header {
+      display: inline-flex;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .bcs-uname {
+      color: #61666D;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .bcs-level {
+      margin-left: 5px;
+      width: 30px;
+      height: 30px;
+    }
+    .bcs-content {
+      font-size: 15px;
+      line-height: 24px;
+      color: #18191C;
+    }
+    .bcs-note {
+      width: 48px;
+      height: 22px;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 4px;
+      color: #9499A0;
+      background-color: #F6F7F8;
+      vertical-align: text-bottom;
+      font-size: 12px;
+      font-style: normal;
+    }
+    .bcs-footer {
+      display: flex;
+      align-items: center;
+      position: relative;
+      margin-top: 5px;
+      font-size: 13px;
+      color: #9499A0;
+    }
+    .bcs-footer div {
+      display: flex;
+      align-items: center;
+    }
+    .bcs-div {
+      padding-bottom: 14px;
+      margin-left: 80px;
+      border-bottom: 1px solid #E3E5E7;
+    }
+  `;
+
+  shadowRoot.appendChild(style);
 }
 
 function injectNewCommentContainer(contents: HTMLElement, feed: HTMLElement, newFeed: HTMLElement) {
   contents.insertBefore(newFeed, feed);
 }
 
-function injectCommentButtons(sortActions: Element, buttonBundleList: ButtonBundle[], continuations: HTMLElement | null | undefined, feed: HTMLElement, newFeed: HTMLElement) {
+function injectCommentButtons(
+  sortActions: Element,
+  buttonBundleList: ButtonBundle[],
+  continuations: HTMLElement | null | undefined,
+  feed: HTMLElement,
+  newFeed: HTMLElement)
+{
   // 因为B站原生的两个按钮“最新|最热”包含 shadowRoot，需要进行特判
   function setButton(button: HTMLElement, state: boolean) {
     const color = state ? BiliButtonColor.clicked : BiliButtonColor.unclicked;
@@ -46,6 +146,7 @@ function injectCommentButtons(sortActions: Element, buttonBundleList: ButtonBund
       buttonShadowRoot.style.color = color;
       if (state) {
         feed.style.display = 'block';
+        newFeed.style.display = 'none';
         if (continuations) {
           continuations.style.display = 'block';
         }
@@ -55,6 +156,7 @@ function injectCommentButtons(sortActions: Element, buttonBundleList: ButtonBund
       button.style.color = color;
       if (state) {
         feed.style.display = 'none';
+        newFeed.style.display = 'block';
         if (continuations) {
           continuations.style.display = 'none';
         }
@@ -148,6 +250,9 @@ function injectCommentButton(buttonBundleList: ButtonBundle[]) {
                   // shadowRoot 插入 css 样式
                   injectCommentButtonStyle(header.shadowRoot!);
 
+                  // 新评论区 container 添加样式
+                  injectCommentContainerStyle(comments.shadowRoot!);
+
                   const contents = comments.shadowRoot?.querySelector('#contents');
                   const continuations = comments.shadowRoot?.querySelector('#continuations');
                   const feed = contents?.querySelector('#feed');
@@ -209,12 +314,8 @@ function match(content: string, pattern: RegExp): string {
   return '';
 }
 
-function isNote(reply: any) {
-  return 'note_cvid' in reply || reply.note_cvid_str != '';
-}
-
-const noteClick: ButtonClickFunction = (commentContainer: HTMLElement) => {
-  let params: CommentSearchParams = {
+const noteClick: ButtonClickFunction = async (commentContainer: HTMLElement) => {
+  let param: CommentSearchParams = {
     oid: getOid()!,
     type: 1,
     sort: 2,
@@ -222,15 +323,29 @@ const noteClick: ButtonClickFunction = (commentContainer: HTMLElement) => {
     ps: 20,
   };
 
-  fetchAllComments(params).then(replies => {
-    replies.forEach(reply => {
-      if (!isNote(reply)) {
-        return;
-      }
+  await startSearching();
 
-      commentContainer.appendChild(createComment(CommentInfo.fromReply(reply)));
+  do {
+    let replies = await fetchComments(param);
+
+    if (replies.length == 0 || !await isSearching()) {
+      break;
+    }
+
+    replies.forEach(reply => {
+      let info = CommentInfo.fromReply(reply);
+
+      if (info.type == BiliCommentType.note) {
+        commentContainer.appendChild(createComment(info));
+      }
     });
-  });
+
+    param.pn++;
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+  } while (true);
+
+  await stopSearching();
 }
 
 export { injectCommentButton, emptyButtonClickFunction, noteClick };

@@ -1,30 +1,96 @@
-import { BiliApi } from "@/bilibili-comment-search/constants";
+import { BiliApi, BiliCommentType } from "@/bilibili-comment-search/constants";
 import { storage } from 'wxt/storage';
 
 type Reply = any;
 
-function getAvatar(reply: Reply): string {
-  return reply.member.avatar;
+class MemberInfo {
+  avatar: string
+  level: number
+  uname: string
+
+  constructor(avatar: string, level: number, uname: string) {
+    this.avatar = avatar;
+    this.level = level;
+    this.uname = uname;
+  }
+
+  static fromReply(reply: Reply) {
+    return new MemberInfo(
+      reply.member.avatar,
+      reply.member.level_info.current_level,
+      reply.member.uname,
+    );
+  }
 }
 
-function getLevel(reply: Reply): number {
-  return reply.member.level_info.current_level;
+class ContentInfo {
+  message: string
+  emote: Record<any, any> | undefined
+  pictures: any[] | undefined
+
+  constructor(message: string, emote: Record<any, any>, pictures: any[]) {
+    this.message = message;
+    this.emote = emote;
+    this.pictures = pictures;
+  }
+
+  static fromReply(reply: Reply) {
+    return new ContentInfo(
+      reply.content.message,
+      reply.content.emote,
+      reply.content.pictures,
+    );
+  }
 }
 
-function getUname(reply: Reply): string {
-  return reply.member.uname;
-}
+class CommentInfo {
+  type: BiliCommentType
+  ctime: number
+  content: ContentInfo
+  like: number
+  member: MemberInfo
+  mid: number
+  replies: (CommentInfo | null)[]
 
-function getContent(reply: Reply): string {
-  return reply.contents.message;
-}
+  constructor(type: BiliCommentType, ctime: number, content: ContentInfo, like: number, member: MemberInfo, mid: number, replies: (CommentInfo | null)[]) {
+    this.ctime = ctime
+    this.type = type;
+    this.content = content;
+    this.like = like;
+    this.member = member;
+    this.mid = mid;
+    this.replies = replies;
+  }
 
-function getLike(reply: Reply): number {
-  return reply.like;
-}
+  static fromReply(reply: Reply) {
+    let type = BiliCommentType.noraml;
 
-function getReplies(reply: Reply): Reply[] {
-  return reply.replies;
+    if ('note_cvid' in reply || reply.note_cvid_str != '0') {
+      type = BiliCommentType.note;
+    }
+
+    return new CommentInfo(
+      type,
+      reply.ctime,
+      ContentInfo.fromReply(reply),
+      reply.like,
+      MemberInfo.fromReply(reply),
+      reply.mid,
+      reply.replies,
+    );
+  }
+
+  getTime() {
+    return new Date(this.ctime * 1000)
+      .toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).replace(/\//g, '-');
+  }
 }
 
 function getBV(): string | undefined {
@@ -89,7 +155,7 @@ async function fetchComments(params: CommentSearchParams): Promise<[]> {
   }
 
   if (body.data.top_replies && params.pn == 1) {
-    body.data.replies.unshift(body.data.top_replies);
+    body.data.replies.unshift(...body.data.top_replies);
   }
 
   return body.data.replies;
@@ -118,7 +184,7 @@ async function fetchAllComments(param: CommentSearchParams): Promise<Reply[]> {
   return replies;
 }
 
-export { Reply, getAvatar, getLevel, getUname, getContent, getLike, getReplies };
+export { Reply, CommentInfo };
 export { startSearching, stopSearching, isSearching };
 export { getOid };
 export { CommentSearchParams, fetchComments, fetchAllComments };
