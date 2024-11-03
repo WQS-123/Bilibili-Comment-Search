@@ -1,4 +1,5 @@
 import { BiliApi } from "@/bilibili-comment-search/constants";
+import { storage } from 'wxt/storage';
 
 function getBV(): string | undefined {
   let url = window.location.href;
@@ -12,23 +13,48 @@ function getBV(): string | undefined {
   return match[0]
 }
 
-export function getOid(): string | undefined {
+function getOid(): string | undefined {
   return getBV()
 }
 
-export interface CommentApiParam {
+async function startSearching() {
+  await storage.setItem<boolean>('local:bili-is-searching', true);
+}
+
+async function stopSearching() {
+  await storage.setItem<boolean>('local:bili-is-searching', false);
+}
+
+async function isSearching(): Promise<boolean | null> {
+  return await storage.getItem<boolean>('local:bili-is-searching');
+}
+
+interface CommentSearchParams {
   oid: string,
-  type: string,
-  sort: string,
-  pn: string,
-  ps: string,
+  type: number,
+  sort: number,
+  pn: number,
+  ps: number,
 };
 
-export async function fetchComments(param: URLSearchParams): Promise<[]> {
-  const resp = await fetch(`${BiliApi.comments}?${param.toString()}`, {
-    method: "GET",
-    credentials: 'include'
+function createURLSearchParams(param: CommentSearchParams): URLSearchParams {
+  return new URLSearchParams({
+    oid: param.oid,
+    type: param.type.toString(),
+    sort: param.sort.toString(),
+    pn: param.pn.toString(),
+    ps: param.ps.toString(),
   });
+}
+
+async function fetchComments(params: CommentSearchParams): Promise<[]> {
+  const resp = await fetch(
+    `${BiliApi.comments}?${createURLSearchParams(params).toString()}`,
+    {
+      method: "GET",
+      credentials: 'include'
+    }
+  );
   const body = await resp.json();
 
   if (body.code != 0) {
@@ -43,35 +69,29 @@ export async function fetchComments(param: URLSearchParams): Promise<[]> {
   return body.data.replies;
 }
 
-export async function fetchAllComments(): Promise<any[]> {
-  let page = 1, count = 0, replies: [] = [];
-  let oid = getOid();
-  
-  if (!oid) {
-    return [];
-  }
+async function fetchAllComments(param: CommentSearchParams): Promise<any[]> {
+  let replies: any[] = [];
+
+  await startSearching();
 
   do {
-    let reply = await fetchComments(
-      new URLSearchParams({
-        oid: oid,
-        type: '1',
-        sort: '2',
-        pn: `${page}`,
-        ps: '20'
-      }
-    ));
+    let reply = await fetchComments(param);
 
-    if (reply.length == 0) {
+    if (reply.length == 0 || !await isSearching()) {
       break;
     }
 
-    count += reply.length;
     replies.push(...reply);
-    page++;
+    param.pn++;
 
     await new Promise(resolve => setTimeout(resolve, 500));
   } while (true);
 
+  await stopSearching();
+
   return replies;
 }
+
+export { startSearching, stopSearching, isSearching };
+export { getOid };
+export { CommentSearchParams, fetchComments, fetchAllComments };
