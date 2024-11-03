@@ -1,6 +1,5 @@
-import { createButton, injectCommentButton } from "@/bilibili-comment-search/components";
-import { emptyButtonClickFunction } from "@/bilibili-comment-search/core";
-import { getOid, fetchComments, fetchAllComments } from "@/bilibili-comment-search/bilibili";
+import { injectCommentButton, emptyButtonClickFunction } from "@/bilibili-comment-search/core";
+import { createButton } from "@/bilibili-comment-search/components";
 
 export default defineContentScript({
   matches: ['*://*.bilibili.com/video/*'],
@@ -15,5 +14,14 @@ export default defineContentScript({
         click: emptyButtonClickFunction
       },
     ]);
+    // fetchAllComments({
+    //   oid: getOid()!,
+    //   type: 1,
+    //   sort: 2,
+    //   pn: 1,
+    //   ps: 20,
+    // }).then(resp => {
+    //   console.log(resp);
+    // });
   },
 });

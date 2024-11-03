@@ -5,5 +5,5 @@ export const enum BiliButtonColor {
 };
 
 export const enum BiliApi {
-  comments = 'https://api.bilibili.com/x/v2/reply'
+  comments = 'https://api.bilibili.com/x/v2/reply',
 };

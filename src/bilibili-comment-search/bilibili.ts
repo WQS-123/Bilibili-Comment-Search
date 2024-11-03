@@ -62,7 +62,7 @@ async function fetchComments(params: CommentSearchParams): Promise<[]> {
     return [];
   }
 
-  if (body.data.top_replies) {
+  if (body.data.top_replies && params.pn == 1) {
     body.data.replies.unshift(body.data.top_replies);
   }
 
