@@ -1,5 +1,5 @@
-import { injectCommentButton, emptyButtonClickFunction } from "@/bilibili-comment-search/core";
-import { createButton } from "@/bilibili-comment-search/components";
+import { injectCommentButton, emptyButtonClickFunction, noteClick } from "@/bilibili-comment-search/core";
+import { createCommentButton } from "@/bilibili-comment-search/components";
 import { fetchAllComments, getOid } from "@/bilibili-comment-search/bilibili";
 
 export default defineContentScript({
@@ -7,11 +7,11 @@ export default defineContentScript({
   main() {
     injectCommentButton([
       {
-        button: createButton('笔记'),
-        click: emptyButtonClickFunction
+        button: createCommentButton('笔记'),
+        click: noteClick
       },
       {
-        button: createButton('搜索'),
+        button: createCommentButton('搜索'),
         click: emptyButtonClickFunction
       },
     ]);

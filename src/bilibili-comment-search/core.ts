@@ -1,5 +1,5 @@
-import { createDivider, createCommentsContainer, createComment } from "@/bilibili-comment-search/components";
-import { getOid, fetchComments, fetchAllComments } from "@/bilibili-comment-search/bilibili";
+import { MemberInfo, CommentInfo, createDivider, createCommentsContainer, createComment } from "@/bilibili-comment-search/components";
+import { getOid, CommentSearchParams, fetchComments, fetchAllComments } from "@/bilibili-comment-search/bilibili";
 import { BiliButtonColor } from './constants';
 
 interface ButtonClickFunction {
@@ -190,26 +190,6 @@ function injectCommentButton(buttonBundleList: ButtonBundle[]) {
 
 const emptyButtonClickFunction: ButtonClickFunction = (commentsContainer: HTMLElement) => { }
 
-function getAvatar(reply: any): string {
-  return reply.member.avatar;
-}
-
-function getLevel(reply: any): number {
-  return reply.member.level_info.current_level;
-}
-
-function getUname(reply: any): string {
-  return reply.member.uname;
-}
-
-function getContent(reply: any): string {
-  return reply.contents.message;
-}
-
-function getReplies(reply: any): any[] {
-  return reply.replies;
-}
-
 function match(content: string, pattern: RegExp): string {
   const matches = Array.from(content.matchAll(pattern));
 
@@ -229,8 +209,28 @@ function match(content: string, pattern: RegExp): string {
   return '';
 }
 
-// function isNote(reply: any[]) {
+function isNote(reply: any) {
+  return 'note_cvid' in reply || reply.note_cvid_str != '';
+}
 
-// }
+const noteClick: ButtonClickFunction = (commentContainer: HTMLElement) => {
+  let params: CommentSearchParams = {
+    oid: getOid()!,
+    type: 1,
+    sort: 2,
+    pn: 1,
+    ps: 20,
+  };
 
-export { injectCommentButton, emptyButtonClickFunction };
+  fetchAllComments(params).then(replies => {
+    replies.forEach(reply => {
+      if (!isNote(reply)) {
+        return;
+      }
+
+      commentContainer.appendChild(createComment(CommentInfo.fromReply(reply)));
+    });
+  });
+}
+
+export { injectCommentButton, emptyButtonClickFunction, noteClick };

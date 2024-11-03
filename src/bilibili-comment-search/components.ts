@@ -1,13 +1,46 @@
-interface MemberInfo {
-  avatar: string,
-  level: string,
-  uname: string,
+import { Reply, getAvatar, getLevel, getUname, getContent, getLike, getReplies } from "@/bilibili-comment-search/bilibili";
+
+class MemberInfo {
+  avatar: string
+  level: number
+  uname: string
+
+  constructor(avatar: string, level: number, uname: string) {
+    this.avatar = avatar;
+    this.level = level;
+    this.uname = uname;
+  }
+
+  static fromReply(reply: Reply) {
+    return new MemberInfo(
+      getAvatar(reply),
+      getLevel(reply),
+      getContent(reply)
+    );
+  }
 }
 
-interface CommentInfo {
-  content: string,
-  member: MemberInfo,
-  replies: (CommentInfo | null)[],
+class CommentInfo {
+  content: string
+  like: number
+  member: MemberInfo
+  replies: (CommentInfo | null)[]
+
+  constructor(content: string, like: number, member: MemberInfo, replies: (CommentInfo | null)[]) {
+    this.content = content;
+    this.like = like;
+    this.member = member;
+    this.replies = replies;
+  }
+
+  static fromReply(reply: Reply) {
+    return new CommentInfo(
+      getContent(reply),
+      getLike(reply),
+      MemberInfo.fromReply(reply),
+      getReplies(reply)
+    );
+  }
 }
 
 function createDivider(): HTMLElement {
@@ -16,7 +49,7 @@ function createDivider(): HTMLElement {
   return divider;
 }
 
-function createButton(text: string): HTMLElement {
+function createCommentButton(text: string): HTMLElement {
   let button = document.createElement('Bilibili-Comment-Button');
   button.innerHTML = text;
   return button;
@@ -32,4 +65,4 @@ function createComment(comment: CommentInfo): HTMLElement {
 }
 
 export { MemberInfo, CommentInfo };
-export { createDivider, createButton, createCommentsContainer, createComment };
+export { createDivider, createCommentButton, createCommentsContainer, createComment };

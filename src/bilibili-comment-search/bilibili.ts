@@ -1,6 +1,32 @@
 import { BiliApi } from "@/bilibili-comment-search/constants";
 import { storage } from 'wxt/storage';
 
+type Reply = any;
+
+function getAvatar(reply: Reply): string {
+  return reply.member.avatar;
+}
+
+function getLevel(reply: Reply): number {
+  return reply.member.level_info.current_level;
+}
+
+function getUname(reply: Reply): string {
+  return reply.member.uname;
+}
+
+function getContent(reply: Reply): string {
+  return reply.contents.message;
+}
+
+function getLike(reply: Reply): number {
+  return reply.like;
+}
+
+function getReplies(reply: Reply): Reply[] {
+  return reply.replies;
+}
+
 function getBV(): string | undefined {
   let url = window.location.href;
   let match = url.match(/BV[a-zA-Z0-9]+/);
@@ -69,8 +95,8 @@ async function fetchComments(params: CommentSearchParams): Promise<[]> {
   return body.data.replies;
 }
 
-async function fetchAllComments(param: CommentSearchParams): Promise<any[]> {
-  let replies: any[] = [];
+async function fetchAllComments(param: CommentSearchParams): Promise<Reply[]> {
+  let replies: Reply[] = [];
 
   await startSearching();
 
@@ -92,6 +118,7 @@ async function fetchAllComments(param: CommentSearchParams): Promise<any[]> {
   return replies;
 }
 
+export { Reply, getAvatar, getLevel, getUname, getContent, getLike, getReplies };
 export { startSearching, stopSearching, isSearching };
 export { getOid };
 export { CommentSearchParams, fetchComments, fetchAllComments };
