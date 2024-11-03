@@ -190,25 +190,44 @@ function injectCommentButton(buttonBundleList: ButtonBundle[]) {
 
 const emptyButtonClickFunction: ButtonClickFunction = (commentsContainer: HTMLElement) => { }
 
-// function getAvatar(reply: any[]): string {
+function getAvatar(reply: any): string {
+  return reply.member.avatar;
+}
 
-// }
+function getLevel(reply: any): number {
+  return reply.member.level_info.current_level;
+}
 
-// function getLevel(reply: any[]): string {
+function getUname(reply: any): string {
+  return reply.member.uname;
+}
 
-// }
+function getContent(reply: any): string {
+  return reply.contents.message;
+}
 
-// function getUname(reply: any[], pattern: RegExp | null): string {
-//   return '';
-// }
+function getReplies(reply: any): any[] {
+  return reply.replies;
+}
 
-// function getContent(reply: any[], pattern: RegExp | null): string {
-//   return '';
-// }
+function match(content: string, pattern: RegExp): string {
+  const matches = Array.from(content.matchAll(pattern));
 
-// function getReplies(reply: any[]): any[] {
+  if (matches.length != 0) {
+    let result = content;
 
-// }
+    matches.reverse().forEach(match => {
+      const st = match.index;
+      const ed = st + match[0].length;
+
+      result = result.slice(0, st) + `<span>${match[0]}</span>` + result.slice(ed);
+    });
+
+    return result;
+  }
+
+  return '';
+}
 
 // function isNote(reply: any[]) {
 
