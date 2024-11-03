@@ -1,6 +1,5 @@
-import { createDivider, createCommentsContainer, createComment } from "@/bilibili-comment-search/components";
-import { startSearching, stopSearching, isSearching } from "@/bilibili-comment-search/bilibili";
-import { CommentInfo, getOid, CommentSearchParams, fetchComments } from "@/bilibili-comment-search/bilibili";
+import { CommentInfo, CommentSearchParams, fetchComments, getOid, isSearching, startSearching, stopSearching } from "@/bilibili-comment-search/bilibili";
+import { createButtonDivider, createCommentsContainer, createComment } from "@/bilibili-comment-search/components";
 import { BiliButtonColor, BiliCommentType } from './constants';
 
 interface ButtonClickFunction {
@@ -36,6 +35,10 @@ function injectCommentContainerStyle(shadowRoot: ShadowRoot) {
   const style = document.createElement('style');
 
   style.textContent = `
+    span {
+      display: inline-block;
+      word-break: break-all;
+    }
     .bcs-container {
       position: relative;
     }
@@ -48,10 +51,6 @@ function injectCommentContainerStyle(shadowRoot: ShadowRoot) {
     }
     .bcs-avatar {
       position: absolute;
-      left: 20px;
-      top: 22px;
-      width: 48px;
-      height: 48px;
       transform-origin: left top;
       transform: var(--bili-comments-avatar-size);
       z-index: 10;
@@ -60,20 +59,48 @@ function injectCommentContainerStyle(shadowRoot: ShadowRoot) {
       cursor: pointer;
     }
     .bcs-avatar img {
-      width: 48px;
-      height: 48px;
       border-radius: 50%;
       z-index: 10;
     }
+    .bcs-avatar-0 {
+      left: 20px;
+      top: 22px;
+      width: 48px;
+      height: 48px;
+    }
+    .bcs-avatar-1 {
+      padding: 16px 0px 8px;
+      width: 24px;
+      height: 24px;
+    }
+    .bcs-avatar-0 img {
+      width: 48px;
+      height: 48px;
+    }
+    .bcs-avatar-1 img {
+      width: 24px;
+      height: 24px;
+    }
     .bcs-main {
       position: relative;
+    }
+    .bcs-main-0 {
       padding-left: 80px;
       padding-top: 22px;
     }
+    .bcs-main-1 {
+      padding: 8px 0 8px 34px;
+    }
     .bcs-header {
+      margin-bottom: 4px;
+    }
+    .bcs-header-0 {
       display: inline-flex;
       align-items: center;
-      margin-bottom: 4px;
+    }
+    .bcs-header-1 {
+      display: block;
+      align-items: center;
     }
     .bcs-uname {
       color: #61666D;
@@ -107,9 +134,14 @@ function injectCommentContainerStyle(shadowRoot: ShadowRoot) {
       display: flex;
       align-items: center;
       position: relative;
-      margin-top: 5px;
       font-size: 13px;
       color: #9499A0;
+    }
+    .bcs-footer-0 {
+      margin-top: 5px;
+    }
+    .bcs-footer-1 {
+      margin-top: 3px;
     }
     .bcs-footer div {
       display: flex;
@@ -171,7 +203,7 @@ function injectCommentButtons(
 
     button.addEventListener('click', () => click(newFeed) );
 
-    sortActions.appendChild(createDivider());
+    sortActions.appendChild(createButtonDivider());
     sortActions.appendChild(button);
   }
 
@@ -293,8 +325,6 @@ function injectCommentButton(buttonBundleList: ButtonBundle[]) {
   observerComment.observe(document.body, { childList: true, subtree: true });
 }
 
-const emptyButtonClickFunction: ButtonClickFunction = (commentsContainer: HTMLElement) => { }
-
 function match(content: string, pattern: RegExp): string {
   const matches = Array.from(content.matchAll(pattern));
 
@@ -315,6 +345,8 @@ function match(content: string, pattern: RegExp): string {
 }
 
 const noteClick: ButtonClickFunction = async (commentContainer: HTMLElement) => {
+  commentContainer.innerHTML = ``;
+
   let param: CommentSearchParams = {
     oid: getOid()!,
     type: 1,
@@ -348,4 +380,8 @@ const noteClick: ButtonClickFunction = async (commentContainer: HTMLElement) => 
   await stopSearching();
 }
 
-export { injectCommentButton, emptyButtonClickFunction, noteClick };
+const searchClick: ButtonClickFunction = async (commentContainer: HTMLElement) => {
+  commentContainer.innerHTML = ``;
+}
+
+export { injectCommentButton, noteClick, searchClick };

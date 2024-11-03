@@ -24,11 +24,13 @@ class MemberInfo {
 }
 
 class ContentInfo {
+  at_name_to_mid: Record<any, any> | null
   message: string
   emote: Record<any, any> | undefined
   pictures: any[] | undefined
 
-  constructor(message: string, emote: Record<any, any>, pictures: any[]) {
+  constructor(at_name_to_mid: Record<any, any>| null, message: string, emote: Record<any, any>, pictures: any[]) {
+    this.at_name_to_mid = at_name_to_mid;
     this.message = message;
     this.emote = emote;
     this.pictures = pictures;
@@ -36,6 +38,7 @@ class ContentInfo {
 
   static fromReply(reply: Reply) {
     return new ContentInfo(
+      reply.content.at_name_to_mid,
       reply.content.message,
       reply.content.emote,
       reply.content.pictures,
@@ -50,9 +53,9 @@ class CommentInfo {
   like: number
   member: MemberInfo
   mid: number
-  replies: (CommentInfo | null)[]
+  replies: CommentInfo[] | null
 
-  constructor(type: BiliCommentType, ctime: number, content: ContentInfo, like: number, member: MemberInfo, mid: number, replies: (CommentInfo | null)[]) {
+  constructor(type: BiliCommentType, ctime: number, content: ContentInfo, like: number, member: MemberInfo, mid: number, replies: CommentInfo[] | null) {
     this.ctime = ctime
     this.type = type;
     this.content = content;
