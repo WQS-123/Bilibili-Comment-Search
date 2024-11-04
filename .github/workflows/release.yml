@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   # 单次部署的工作描述
-  deploy:
+  release:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
