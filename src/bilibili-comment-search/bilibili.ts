@@ -1,6 +1,6 @@
 import { BiliApi, BiliCommentType } from "@/bilibili-comment-search/constants";
-import { storage } from 'wxt/storage';
 
+type ReplyData = any;
 type Reply = any;
 
 class MemberInfo {
@@ -48,6 +48,7 @@ class ContentInfo {
 
 class CommentInfo {
   type: BiliCommentType
+  up: boolean
   ctime: number
   content: ContentInfo
   like: number
@@ -56,8 +57,9 @@ class CommentInfo {
   replies: CommentInfo[] | null
 
   constructor(type: BiliCommentType, ctime: number, content: ContentInfo, like: number, member: MemberInfo, mid: number, replies: CommentInfo[] | null) {
-    this.ctime = ctime
+    this.up = false;
     this.type = type;
+    this.ctime = ctime;
     this.content = content;
     this.like = like;
     this.member = member;
@@ -112,18 +114,6 @@ function getOid(): string | undefined {
   return getBV()
 }
 
-async function startSearching() {
-  await storage.setItem<boolean>('local:bili-is-searching', true);
-}
-
-async function stopSearching() {
-  await storage.setItem<boolean>('local:bili-is-searching', false);
-}
-
-async function isSearching(): Promise<boolean | null> {
-  return await storage.getItem<boolean>('local:bili-is-searching');
-}
-
 interface CommentSearchParams {
   oid: string,
   type: number,
@@ -142,7 +132,7 @@ function createURLSearchParams(param: CommentSearchParams): URLSearchParams {
   });
 }
 
-async function fetchComments(params: CommentSearchParams): Promise<[]> {
+async function fetchComments(params: CommentSearchParams): Promise<ReplyData | null> {
   const resp = await fetch(
     `${BiliApi.comments}?${createURLSearchParams(params).toString()}`,
     {
@@ -154,25 +144,24 @@ async function fetchComments(params: CommentSearchParams): Promise<[]> {
 
   if (body.code != 0) {
     console.error(`获取评论区数据失败: ${body.message}`);
-    return [];
+    return null;
   }
 
   if (body.data.top_replies && params.pn == 1) {
     body.data.replies.unshift(...body.data.top_replies);
   }
 
-  return body.data.replies;
+  return body.data;
 }
 
 async function fetchAllComments(param: CommentSearchParams): Promise<Reply[]> {
   let replies: Reply[] = [];
 
-  await startSearching();
-
   do {
-    let reply = await fetchComments(param);
+    let data = await fetchComments(param);
+    let reply = data.replies as Reply[];
 
-    if (reply.length == 0 || !await isSearching()) {
+    if (reply.length == 0) {
       break;
     }
 
@@ -182,12 +171,8 @@ async function fetchAllComments(param: CommentSearchParams): Promise<Reply[]> {
     await new Promise(resolve => setTimeout(resolve, 500));
   } while (true);
 
-  await stopSearching();
-
   return replies;
 }
 
-export { Reply, CommentInfo };
-export { startSearching, stopSearching, isSearching };
-export { getOid };
-export { CommentSearchParams, fetchComments, fetchAllComments };
+export { Reply, CommentInfo, CommentSearchParams };
+export { getOid, fetchComments, fetchAllComments };

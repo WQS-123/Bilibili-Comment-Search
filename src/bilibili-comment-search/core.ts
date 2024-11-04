@@ -1,14 +1,18 @@
-import { CommentInfo, CommentSearchParams, fetchComments, getOid, isSearching, startSearching, stopSearching } from "@/bilibili-comment-search/bilibili";
-import { createButtonDivider, createCommentsContainer, createComment } from "@/bilibili-comment-search/components";
-import { BiliButtonColor, BiliCommentType } from './constants';
+import { createButtonDivider, createCommentsContainer, createCommentSearch } from "@/bilibili-comment-search/components";
+import { BiliButtonColor } from './constants';
 
-interface ButtonClickFunction {
-  (commentContainer: HTMLElement): void;
+interface SwitchFunction {
+  (container: HTMLElement, search: HTMLElement): void;
 }
 
-interface ButtonBundle {
+interface SearchFunction {
+  (container: HTMLElement, search: HTMLElement): void;
+}
+
+interface CommentBundle {
   button: HTMLElement,
-  click: ButtonClickFunction,
+  switch: SwitchFunction,
+  search: SearchFunction,
 }
 
 function injectCommentButtonStyle(shadowRoot: ShadowRoot) {
@@ -25,6 +29,46 @@ function injectCommentButtonStyle(shadowRoot: ShadowRoot) {
     bilibili-comment-button:hover {
       color: ${BiliButtonColor.hover} !important;
       cursor: pointer;
+    }
+  `;
+
+  shadowRoot.appendChild(style);
+}
+
+function injectCommentSearchStyle(shadowRoot: ShadowRoot) {
+  const style = document.createElement('style');
+
+  // 参考“最新|最热”的元素样式
+  style.textContent = `
+    .bcs-search-container {
+      padding-left: 80px;
+      font-size: 15px;
+      line-height: 24px;
+      color: #18191C;
+    }
+    .bcs-search-main {
+      display: flex;
+      flex-direction: column;
+    }
+    .bcs-search-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0px;
+    }
+    .bcs-search-header button {
+      cursor: pointer;
+    }
+    .bcs-search-header input, .bcs-search-header button {
+      padding: 0px 10px;
+      border-radius: 5px;
+      height: 20px;
+      border: 1px solid #9e9e9e;
+    }
+    .bcs-search-options {
+      display: flex;
+      gap: 15px;
+      margin-top: 10px;
     }
   `;
 
@@ -92,15 +136,16 @@ function injectCommentContainerStyle(shadowRoot: ShadowRoot) {
       padding: 8px 0 8px 34px;
     }
     .bcs-header {
-      margin-bottom: 4px;
     }
     .bcs-header-0 {
       display: inline-flex;
       align-items: center;
+      margin-bottom: 4px;
     }
     .bcs-header-1 {
       display: block;
       align-items: center;
+      margin-bottom: 0px;
     }
     .bcs-uname {
       color: #61666D;
@@ -109,6 +154,12 @@ function injectCommentContainerStyle(shadowRoot: ShadowRoot) {
     }
     .bcs-level {
       margin-left: 5px;
+    }
+    .bcs-level-0 {
+      width: 30px;
+      height: 30px;
+    }
+    .bcs-level-1 {
       width: 30px;
       height: 30px;
     }
@@ -138,14 +189,18 @@ function injectCommentContainerStyle(shadowRoot: ShadowRoot) {
       color: #9499A0;
     }
     .bcs-footer-0 {
-      margin-top: 5px;
+      margin-top: 10px;
     }
     .bcs-footer-1 {
-      margin-top: 3px;
+      margin-top: 0px;
     }
     .bcs-footer div {
       display: flex;
       align-items: center;
+    }
+    .bcs-expander {
+      margin-top: 4px;
+      color: #9499A0;
     }
     .bcs-div {
       padding-bottom: 14px;
@@ -157,16 +212,13 @@ function injectCommentContainerStyle(shadowRoot: ShadowRoot) {
   shadowRoot.appendChild(style);
 }
 
-function injectNewCommentContainer(contents: HTMLElement, feed: HTMLElement, newFeed: HTMLElement) {
-  contents.insertBefore(newFeed, feed);
-}
-
 function injectCommentButtons(
   sortActions: Element,
-  buttonBundleList: ButtonBundle[],
+  commentBundleList: CommentBundle[],
   continuations: HTMLElement | null | undefined,
   feed: HTMLElement,
-  newFeed: HTMLElement)
+  newFeed: HTMLElement,
+  search: HTMLElement)
 {
   // 因为B站原生的两个按钮“最新|最热”包含 shadowRoot，需要进行特判
   function setButton(button: HTMLElement, state: boolean) {
@@ -179,6 +231,7 @@ function injectCommentButtons(
       if (state) {
         feed.style.display = 'block';
         newFeed.style.display = 'none';
+        search.style.display = 'none';
         if (continuations) {
           continuations.style.display = 'block';
         }
@@ -189,6 +242,7 @@ function injectCommentButtons(
       if (state) {
         feed.style.display = 'none';
         newFeed.style.display = 'block';
+        search.style.display = 'block';
         if (continuations) {
           continuations.style.display = 'none';
         }
@@ -196,16 +250,15 @@ function injectCommentButtons(
     }
   }
 
-  // 为 #sort-actions 的新增按钮添加 click 操作
-  for (let bundle of buttonBundleList) {
-    const button = bundle.button;
-    const click = bundle.click;
-
-    button.addEventListener('click', () => click(newFeed) );
+  // 为 #sort-actions 的新增按钮添加点击操作并初始化
+  for (let bundle of commentBundleList) {
+    bundle.button.addEventListener('click', () => bundle.switch(newFeed, search) );
+    search.querySelector('#bcs-search-start')?.addEventListener('click', () => bundle.search(newFeed, search));
 
     sortActions.appendChild(createButtonDivider());
-    sortActions.appendChild(button);
+    sortActions.appendChild(bundle.button);
   }
+  search.querySelector('#bcs-search-end')?.addEventListener('click', stopSearching);
 
   // 为 #sort-actions 的所有按钮添加点击切换颜色 & 切换 feed 的操作
   for (let node of sortActions.childNodes) {
@@ -264,7 +317,7 @@ function injectCommentButtons(
  * 
  * @param buttonBundleList 新增按钮数组
  */
-function injectCommentButton(buttonBundleList: ButtonBundle[]) {
+function injectCommentButton(buttonBundleList: CommentBundle[]) {
   const observerComment = new MutationObserver((mutationsList, observer) => {
     for (let mutation of mutationsList) {
       if (mutation.type === 'childList') {
@@ -279,10 +332,13 @@ function injectCommentButton(buttonBundleList: ButtonBundle[]) {
                 const sortActions = header.shadowRoot?.querySelector('#sort-actions');
 
                 if (sortActions) {
-                  // shadowRoot 插入 css 样式
+                  // shadowRoot 插入按钮样式
                   injectCommentButtonStyle(header.shadowRoot!);
 
-                  // 新评论区 container 添加样式
+                  // shadowRoot 插入搜索选项区样式
+                  injectCommentSearchStyle(comments.shadowRoot!);
+
+                  // shadowRoot 插入评论区样式
                   injectCommentContainerStyle(comments.shadowRoot!);
 
                   const contents = comments.shadowRoot?.querySelector('#contents');
@@ -298,12 +354,14 @@ function injectCommentButton(buttonBundleList: ButtonBundle[]) {
                   const continuationsElement = continuations as HTMLElement | null | undefined;
                   const feedElement = feed as HTMLElement;
                   const newFeedElement = createCommentsContainer();
+                  const searchElement = createCommentSearch();
 
                   // 插入新的评论区 container
-                  injectNewCommentContainer(contentsElement, feedElement, newFeedElement);
+                  contentsElement.insertBefore(newFeedElement, feedElement);
+                  contentsElement.insertBefore(searchElement, newFeedElement);
 
                   // 将按钮插入至 #sort-actions 队尾
-                  injectCommentButtons(sortActions, buttonBundleList, continuationsElement, feedElement, newFeedElement);
+                  injectCommentButtons(sortActions, buttonBundleList, continuationsElement, feedElement, newFeedElement, searchElement);
 
                   shadowObserver.disconnect();
                 }
@@ -325,6 +383,18 @@ function injectCommentButton(buttonBundleList: ButtonBundle[]) {
   observerComment.observe(document.body, { childList: true, subtree: true });
 }
 
+async function startSearching() {
+  await storage.setItem<boolean>('local:bili-is-searching', true);
+}
+
+async function stopSearching() {
+  await storage.setItem<boolean>('local:bili-is-searching', false);
+}
+
+async function isSearching(): Promise<boolean | null> {
+  return await storage.getItem<boolean>('local:bili-is-searching');
+}
+
 function match(content: string, pattern: RegExp): string {
   const matches = Array.from(content.matchAll(pattern));
 
@@ -335,7 +405,7 @@ function match(content: string, pattern: RegExp): string {
       const st = match.index;
       const ed = st + match[0].length;
 
-      result = result.slice(0, st) + `<span>${match[0]}</span>` + result.slice(ed);
+      result = result.slice(0, st) + `<span style="background: #febb8b;">${match[0]}</span>` + result.slice(ed);
     });
 
     return result;
@@ -344,44 +414,5 @@ function match(content: string, pattern: RegExp): string {
   return '';
 }
 
-const noteClick: ButtonClickFunction = async (commentContainer: HTMLElement) => {
-  commentContainer.innerHTML = ``;
+export { CommentBundle, injectCommentButton, isSearching, SearchFunction, startSearching, stopSearching, SwitchFunction };
 
-  let param: CommentSearchParams = {
-    oid: getOid()!,
-    type: 1,
-    sort: 2,
-    pn: 1,
-    ps: 20,
-  };
-
-  await startSearching();
-
-  do {
-    let replies = await fetchComments(param);
-
-    if (replies.length == 0 || !await isSearching()) {
-      break;
-    }
-
-    replies.forEach(reply => {
-      let info = CommentInfo.fromReply(reply);
-
-      if (info.type == BiliCommentType.note) {
-        commentContainer.appendChild(createComment(info));
-      }
-    });
-
-    param.pn++;
-
-    await new Promise(resolve => setTimeout(resolve, 500));
-  } while (true);
-
-  await stopSearching();
-}
-
-const searchClick: ButtonClickFunction = async (commentContainer: HTMLElement) => {
-  commentContainer.innerHTML = ``;
-}
-
-export { injectCommentButton, noteClick, searchClick };

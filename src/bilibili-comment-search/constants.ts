@@ -8,9 +8,15 @@ export const enum BiliApi {
   comments = 'https://api.bilibili.com/x/v2/reply',
   space = 'https://space.bilibili.com/',
   level = 'https://i0.hdslb.com/bfs/seed/jinkela/short/webui/user-profile/img/',
+  up = 'https://i0.hdslb.com/bfs/seed/jinkela/short/webui/comments/img/icons/up_pb.svg',
 };
 
 export const enum BiliCommentType {
   noraml = 1,
   note = 2,
+}
+
+export const enum BCSType {
+  note = 1,
+  search = 2,
 }

@@ -1,20 +1,12 @@
-import { injectCommentButton, noteClick, searchClick } from "@/bilibili-comment-search/core";
-import { createCommentButton } from "@/bilibili-comment-search/components";
-import { fetchAllComments, getOid } from "@/bilibili-comment-search/bilibili";
+import { injectCommentButton } from "@/bilibili-comment-search/core";
+import { noteBundle } from "@/bilibili-comment-search/note";
+import { searchBundle } from "@/bilibili-comment-search/search";
+import { getOid, fetchAllComments } from "@/bilibili-comment-search/bilibili";
 
 export default defineContentScript({
   matches: ['*://*.bilibili.com/video/*'],
   main() {
-    injectCommentButton([
-      {
-        button: createCommentButton('笔记'),
-        click: noteClick
-      },
-      {
-        button: createCommentButton('搜索'),
-        click: searchClick
-      },
-    ]);
+    injectCommentButton([noteBundle, searchBundle]);
     fetchAllComments({
       oid: getOid()!,
       type: 1,

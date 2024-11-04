@@ -13,6 +13,33 @@ function createCommentButton(text: string): HTMLElement {
   return button;
 }
 
+function createCommentSearch(): HTMLElement {
+  let search = document.createElement('div');
+
+  search.style.display = 'none';
+  search.className = 'bcs-search-container';
+  search.innerHTML = `
+    <div class="bcs-progress"></div>
+    <div class="bcs-search-main">
+      <div class="bcs-search-header">
+        <input type="text" id="bcs-search" placeholder="输入搜索内容" />
+        <button id="bcs-search-start">开始搜索</button>
+        <button id="bcs-search-stop">停止搜索</button>
+      </div>
+      <div class="bcs-search-options">
+        <label>
+          <input type="checkbox" id="bcs-search_onlyup" /> 只看up
+        </label>
+        <label>
+          <input type="checkbox" id="bcs-search__regexp" /> 正则模式
+        </label>
+      </div>
+    </div>
+  `
+
+  return search;
+}
+
 function createCommentsContainer(): HTMLElement {
   let container = document.createElement('div');
   container.style.display = 'none';
@@ -37,6 +64,7 @@ function createComment(info: CommentInfo): HTMLElement {
         : match;
     }
   );
+  let upHTML = ``;
 
   if (info.type == BiliCommentType.note) {
     noteHTML = `
@@ -82,6 +110,10 @@ function createComment(info: CommentInfo): HTMLElement {
     }
   }
 
+  if (info.up) {
+    upHTML = `<img width="24" height="24" src="${BiliApi.up}" />`
+  }
+
   comment.className = 'bcs-container';
   comment.innerHTML = `
     <a class="bcs-avatar bcs-avatar-0" href="${BiliApi.space + info.mid}">
@@ -90,7 +122,8 @@ function createComment(info: CommentInfo): HTMLElement {
     <div class="bcs-main bcs-main-0">
       <div class="bcs-header bcs-header-0">
         <span class="bcs-uname"><a href="${BiliApi.space + info.mid}">${info.member.uname}</a></span>
-        <img class="bcs-level" width="30" height="30" src="${BiliApi.level + 'level_' + info.member.level + '.svg'}" />
+        <img class="bcs-level bcs-level-0" src="${BiliApi.level + 'level_' + info.member.level + '.svg'}" />
+        ${upHTML}
       </div>
       <div class="bcs-content">
         <span>${noteHTML}${contentWithEmoteWithAtNameToMidHTML}</span>
@@ -111,19 +144,40 @@ function createComment(info: CommentInfo): HTMLElement {
         </div>
         <div style="margin-left: 20px;">回复</div>
       </div>
-      <div class="bcs-replies">
-        <div style="display: none;"></div>
+      <div class="bcs-expander" style="display: none;">
+        <span>查看 ${info.replies?.length} 条回复，</span>
+        <span style="cursor: pointer;">点击查看</span>
+      </div>
+      <div class="bcs-replies" style="display: none;">
       </div>
     </div>
     <div class="bcs-div"></div>
   `;
 
-  if (info.replies) {
+  if (info.replies && info.replies.length > 0) {
+    (comment.getElementsByClassName('bcs-expander')[0] as HTMLElement).style.display = 'block';
     for (let reply of info.replies) {
       comment.getElementsByClassName('bcs-replies')[0]
         .appendChild(createReplyComment(CommentInfo.fromReply(reply)));
     }
   }
+
+  let showReplies = comment.getElementsByClassName('bcs-expander')[0] as HTMLElement;
+  showReplies
+    .getElementsByTagName('span')[1]
+    .addEventListener('click', () => {
+      let replies = comment.getElementsByClassName('bcs-replies')[0] as HTMLElement;
+      let display = replies.style.display;
+
+      if (display == 'none') {
+        replies.style.display = 'block';
+        showReplies.getElementsByTagName('span')[1].innerText = '点击收起';
+      }
+      else {
+        replies.style.display = 'none';
+        showReplies.getElementsByTagName('span')[1].innerText = '点击查看';
+      }
+    });
 
   return comment;
 }
@@ -144,6 +198,11 @@ function createReplyComment(info: CommentInfo): HTMLElement {
         : match;
     }
   );
+  let upHTML = ``;
+
+  if (info.up) {
+    upHTML = `<img width="24" height="24" src="${BiliApi.up}" />`
+  }
 
   comment.className = 'bcs-container';
   comment.innerHTML = `
@@ -153,9 +212,10 @@ function createReplyComment(info: CommentInfo): HTMLElement {
     <div class="bcs-main bcs-main-1">
       <div class="bcs-header bcs-header-1">
         <span class="bcs-content">
-          <span style="position: relative; top: -10px;" class="bcs-uname"><a href="${BiliApi.space + info.mid}">${info.member.uname}</a></span>
-          <img class="bcs-level" width="30" height="30" src="${BiliApi.level + 'level_' + info.member.level + '.svg'}" />
-          <span style="position: relative; top: -10px;">${contentWithEmoteWithAtNameToMidHTML}</span>
+          <span style="position: relative; top: -8px;" class="bcs-uname"><a href="${BiliApi.space + info.mid}">${info.member.uname}</a></span>
+          <img class="bcs-level bcs-level-1" src="${BiliApi.level + 'level_' + info.member.level + '.svg'}" />
+          ${upHTML}
+          <span style="position: relative; top: -8px;">${contentWithEmoteWithAtNameToMidHTML}</span>
         </span>
       </div>
       <div class="bcs-footer bsc-footer-1">
@@ -179,5 +239,21 @@ function createReplyComment(info: CommentInfo): HTMLElement {
   return comment;
 }
 
-export { createButtonDivider, createCommentButton, createCommentsContainer, createReplyComment, createComment };
+function setProgress(search: HTMLElement, text: string) {
+  let progress = search.getElementsByClassName('bcs-progress')[0];
+
+  progress.innerHTML = text;
+}
+
+interface CommentSearchOptions {
+  onlyup: boolean,
+  regexp: boolean,
+  expand: boolean,
+}
+
+function getSearchOptions(search: HTMLElement) {
+
+}
+
+export { createButtonDivider, createComment, createCommentButton, createCommentsContainer, createCommentSearch, createReplyComment, setProgress };
 
