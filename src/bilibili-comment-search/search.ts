@@ -1,6 +1,6 @@
-import { CommentInfo, CommentSearchParams, fetchComments, getOid, Reply } from '@/bilibili-comment-search/bilibili';
-import { createCommentButton, createComment, setProgress, getSearchOptions } from '@/bilibili-comment-search/components';
-import { SwitchFunction, SearchFunction, match, startSearching, stopSearching, isSearching, CommentBundle } from '@/bilibili-comment-search/core';
+import { CommentsReqParams, fetchComments, getOid, Reply, ReplyInfo } from '@/bilibili-comment-search/bilibili';
+import { createComment, createCommentButton, getSearchOptions, setProgress } from '@/bilibili-comment-search/components';
+import { CommentBundle, isSearching, match, SearchFunction, startSearching, stopSearching, SwitchFunction } from '@/bilibili-comment-search/core';
 
 const searchSwitch: SwitchFunction = async (container: HTMLElement, search: HTMLElement) => {
   container.innerHTML = ``;
@@ -10,12 +10,12 @@ const searchSwitch: SwitchFunction = async (container: HTMLElement, search: HTML
 const searchSearch: SearchFunction = async (container: HTMLElement, search: HTMLElement) => {
   container.innerHTML = ``;
 
-  let param: CommentSearchParams = {
+  let params: CommentsReqParams = {
     oid: getOid()!,
-    type: 1,
-    sort: 2,
-    pn: 1,
-    ps: 20,
+    type: '1',
+    sort: '2',
+    ps: '20',
+    pn: '1',
   };
   let total = 0, count = 0;
   let options = getSearchOptions(search);
@@ -36,15 +36,15 @@ const searchSearch: SearchFunction = async (container: HTMLElement, search: HTML
   await startSearching();
 
   do {
-    let data = await fetchComments(param);
+    let data = await fetchComments(params);
     let replies = data.replies as Reply[];
 
     if (replies.length == 0 || !await isSearching()) {
       break;
     }
 
-    replies.forEach(reply => {
-      let info = CommentInfo.fromReply(reply);
+    for (let reply of replies) {
+      let info = ReplyInfo.fromReply(reply);
 
       info.up = data.upper.mid == info.mid;
 
@@ -52,18 +52,19 @@ const searchSearch: SearchFunction = async (container: HTMLElement, search: HTML
         return;
       }
 
-      let element = createComment(info);
+      let [element, number] = await createComment(info);
+
       if (options.match != '') {
         element.innerHTML = match(element.innerHTML, pattern);
       }
       container.appendChild(element);
 
-      count += 1 + (reply.replies.length ?? 0);
-      console.log(count);
-    });
+      count += number;
+      console.log(number, count);
+    }
 
     total = data.page.acount;
-    param.pn++;
+    params.pn = (parseInt(params.pn, 10) + 1).toString();
 
     setProgress(search, `${count} | ${total}`);
 

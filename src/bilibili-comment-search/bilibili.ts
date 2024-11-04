@@ -1,6 +1,6 @@
 import { BiliApi, BiliCommentType } from "@/bilibili-comment-search/constants";
 
-type ReplyData = any;
+type RespData = any;
 type Reply = any;
 
 class MemberInfo {
@@ -46,7 +46,7 @@ class ContentInfo {
   }
 }
 
-class CommentInfo {
+class ReplyInfo {
   type: BiliCommentType
   up: boolean
   ctime: number
@@ -54,9 +54,10 @@ class CommentInfo {
   like: number
   member: MemberInfo
   mid: number
-  replies: CommentInfo[] | null
+  replies: ReplyInfo[] | null
+  rpid: number
 
-  constructor(type: BiliCommentType, ctime: number, content: ContentInfo, like: number, member: MemberInfo, mid: number, replies: CommentInfo[] | null) {
+  constructor(type: BiliCommentType, ctime: number, content: ContentInfo, like: number, member: MemberInfo, mid: number, replies: ReplyInfo[] | null, rpid: number) {
     this.up = false;
     this.type = type;
     this.ctime = ctime;
@@ -65,6 +66,7 @@ class CommentInfo {
     this.member = member;
     this.mid = mid;
     this.replies = replies;
+    this.rpid = rpid;
   }
 
   static fromReply(reply: Reply) {
@@ -74,7 +76,7 @@ class CommentInfo {
       type = BiliCommentType.note;
     }
 
-    return new CommentInfo(
+    return new ReplyInfo(
       type,
       reply.ctime,
       ContentInfo.fromReply(reply),
@@ -82,6 +84,7 @@ class CommentInfo {
       MemberInfo.fromReply(reply),
       reply.mid,
       reply.replies,
+      reply.rpid,
     );
   }
 
@@ -104,37 +107,37 @@ function getBV(): string | undefined {
 
   if (!match) {
     console.error('未找到 bv 号');
-    return
+    return;
   }
 
-  return match[0]
+  return match[0];
 }
 
 function getOid(): string | undefined {
-  return getBV()
+  return getBV();
 }
 
-interface CommentSearchParams {
+type ReqParams = Record<string, string>;
+
+interface CommentsReqParams extends ReqParams {
   oid: string,
-  type: number,
-  sort: number,
-  pn: number,
-  ps: number,
+  type: string,
+  sort: string,
+  ps: string,
+  pn: string,
 };
 
-function createURLSearchParams(param: CommentSearchParams): URLSearchParams {
-  return new URLSearchParams({
-    oid: param.oid,
-    type: param.type.toString(),
-    sort: param.sort.toString(),
-    pn: param.pn.toString(),
-    ps: param.ps.toString(),
-  });
+interface CommentRepliesReqParams extends ReqParams {
+  oid: string,
+  type: string,
+  root: string,
+  ps: string,
+  pn: string,
 }
 
-async function fetchComments(params: CommentSearchParams): Promise<ReplyData | null> {
+async function fetchComments(params: CommentsReqParams): Promise<RespData | null> {
   const resp = await fetch(
-    `${BiliApi.comments}?${createURLSearchParams(params).toString()}`,
+    `${BiliApi.comments}?${new URLSearchParams(params).toString()}`,
     {
       method: "GET",
       credentials: 'include'
@@ -147,32 +150,70 @@ async function fetchComments(params: CommentSearchParams): Promise<ReplyData | n
     return null;
   }
 
-  if (body.data.top_replies && params.pn == 1) {
+  if (body.data.top_replies && params.pn === '1') {
     body.data.replies.unshift(...body.data.top_replies);
   }
 
   return body.data;
 }
 
-async function fetchAllComments(param: CommentSearchParams): Promise<Reply[]> {
-  let replies: Reply[] = [];
+async function fetchCommentReplies(params: CommentRepliesReqParams): Promise<RespData | null> {
+  const resp = await fetch(
+    `${BiliApi.commentReplies}?${new URLSearchParams(params).toString()}`,
+    {
+      method: "GET",
+      credentials: 'include'
+    }
+  );
+  const body = await resp.json();
+
+  if (body.code != 0) {
+    console.error(`获取评论的评论区数据失败: ${body.message}`);
+    return null;
+  }
+
+  return body.data;
+}
+
+async function fetchAllComments(params: CommentsReqParams): Promise<Reply[]> {
+  let result: Reply[] = [];
 
   do {
-    let data = await fetchComments(param);
-    let reply = data.replies as Reply[];
+    let data = await fetchComments(params);
+    let replies = data.replies as Reply[];
 
-    if (reply.length == 0) {
+    if (replies.length == 0) {
       break;
     }
 
-    replies.push(...reply);
-    param.pn++;
+    result.push(...replies);
+    params.pn = (parseInt(params.pn, 10) + 1).toString();
 
     await new Promise(resolve => setTimeout(resolve, 500));
   } while (true);
 
-  return replies;
+  return result;
 }
 
-export { Reply, CommentInfo, CommentSearchParams };
-export { getOid, fetchComments, fetchAllComments };
+async function fetchAllCommentReplies(params: CommentRepliesReqParams): Promise<Reply[]> {
+  let result: Reply[] = [];
+
+  do {
+    let data = await fetchCommentReplies(params);
+    let replies = data.replies as Reply[];
+
+    if (replies.length == 0) {
+      break;
+    }
+
+    result.push(...replies);
+    params.pn = (parseInt(params.pn, 10) + 1).toString();
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+  } while (true);
+
+  return result;
+}
+
+export { RespData, Reply, ReplyInfo, CommentsReqParams, CommentRepliesReqParams };
+export { getOid, fetchComments, fetchCommentReplies, fetchAllComments, fetchAllCommentReplies };

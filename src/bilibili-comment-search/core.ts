@@ -1,4 +1,4 @@
-import { createButtonDivider, createCommentsContainer, createCommentSearch } from "@/bilibili-comment-search/components";
+import { createCommentButtonDivider, createCommentContainer, createCommentSearch } from "@/bilibili-comment-search/components";
 import { BiliButtonColor } from './constants';
 
 interface SwitchFunction {
@@ -255,7 +255,7 @@ function injectCommentButtons(
     bundle.button.addEventListener('click', () => bundle.switch(newFeed, search) );
     search.querySelector('#bcs-search-start')?.addEventListener('click', () => bundle.search(newFeed, search));
 
-    sortActions.appendChild(createButtonDivider());
+    sortActions.appendChild(createCommentButtonDivider());
     sortActions.appendChild(bundle.button);
   }
   search.querySelector('#bcs-search-end')?.addEventListener('click', stopSearching);
@@ -353,7 +353,7 @@ function injectCommentButton(buttonBundleList: CommentBundle[]) {
                   const contentsElement = contents as HTMLElement;
                   const continuationsElement = continuations as HTMLElement | null | undefined;
                   const feedElement = feed as HTMLElement;
-                  const newFeedElement = createCommentsContainer();
+                  const newFeedElement = createCommentContainer();
                   const searchElement = createCommentSearch();
 
                   // 插入新的评论区 container
@@ -414,4 +414,5 @@ function match(content: string, pattern: RegExp): string {
   return '';
 }
 
-export { CommentBundle, injectCommentButton, match, isSearching, SearchFunction, startSearching, stopSearching, SwitchFunction };
+export { CommentBundle, injectCommentButton, isSearching, match, SearchFunction, startSearching, stopSearching, SwitchFunction };
+

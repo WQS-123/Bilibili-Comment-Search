@@ -9,10 +9,10 @@ export default defineContentScript({
     injectCommentButton([noteBundle, searchBundle]);
     fetchAllComments({
       oid: getOid()!,
-      type: 1,
-      sort: 2,
-      pn: 1,
-      ps: 20,
+      type: '1',
+      sort: '2',
+      ps: '20',
+      pn: '1',
     }).then(resp => {
       console.log(resp);
     });

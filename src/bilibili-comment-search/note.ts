@@ -1,43 +1,44 @@
-import { CommentInfo, CommentSearchParams, fetchComments, getOid, Reply } from '@/bilibili-comment-search/bilibili';
-import { createCommentButton, createComment, setProgress } from '@/bilibili-comment-search/components';
+import { CommentsReqParams, fetchComments, getOid, Reply, ReplyInfo } from '@/bilibili-comment-search/bilibili';
+import { createComment, createCommentButton, setProgress } from '@/bilibili-comment-search/components';
 import { BiliCommentType } from '@/bilibili-comment-search/constants';
-import { SwitchFunction, SearchFunction, startSearching, stopSearching, isSearching, CommentBundle } from '@/bilibili-comment-search/core';
+import { CommentBundle, isSearching, SearchFunction, startSearching, stopSearching, SwitchFunction } from '@/bilibili-comment-search/core';
 
 const noteSwitch: SwitchFunction = async (container: HTMLElement, search: HTMLElement) => {
   container.innerHTML = ``;
   (search.getElementsByClassName('bcs-search-main')[0] as HTMLElement).style.display = 'none';
 
-  let param: CommentSearchParams = {
+  let params: CommentsReqParams = {
     oid: getOid()!,
-    type: 1,
-    sort: 2,
-    pn: 1,
-    ps: 20,
+    type: '1',
+    sort: '2',
+    ps: '20',
+    pn: '1',
   };
   let total = 0, count = 0;
 
   await startSearching();
 
   do {
-    let data = await fetchComments(param);
+    let data = await fetchComments(params);
     let replies = data.replies as Reply[];
 
     if (replies.length == 0 || !await isSearching()) {
       break;
     }
 
-    replies.forEach(reply => {
-      let info = CommentInfo.fromReply(reply);
+    for (let reply of replies) {
+      let info = ReplyInfo.fromReply(reply);
+      let [element, number] = await createComment(info);
 
       if (info.type == BiliCommentType.note) {
-        container.appendChild(createComment(info));
+        container.appendChild(element);
       }
 
-      count += 1 + (reply.replies.length ?? 0);
-    });
+      count += number;
+    }
 
     total = data.page.acount;
-    param.pn++;
+    params.pn = (parseInt(params.pn, 10) + 1).toString();
 
     setProgress(search, `${count} | ${total}`);
 
