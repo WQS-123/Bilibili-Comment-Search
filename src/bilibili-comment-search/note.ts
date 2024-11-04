@@ -16,6 +16,8 @@ const noteSwitch: SwitchFunction = async (container: HTMLElement, search: HTMLEl
   };
   let total = 0, count = 0;
 
+  setProgress(search, `开始搜索`);
+
   await startSearching();
 
   do {
@@ -28,24 +30,25 @@ const noteSwitch: SwitchFunction = async (container: HTMLElement, search: HTMLEl
 
     for (let reply of replies) {
       let info = ReplyInfo.fromReply(reply);
-      let [element, number] = await createComment(info);
+      info.up = data.upper.mid == info.mid;
+
+      let [element, number, isOk] = await createComment(info, null);
 
       if (info.type == BiliCommentType.note) {
         container.appendChild(element);
       }
 
       count += number;
+      setProgress(search, `${count} | ${total}`);
     }
 
     total = data.page.acount;
     params.pn = (parseInt(params.pn, 10) + 1).toString();
 
-    setProgress(search, `${count} | ${total}`);
-
     await new Promise(resolve => setTimeout(resolve, 500));
   } while (true);
 
-  setProgress(search, `${total} | ${total} 查找完成`);
+  setProgress(search, `${count} | ${total} 查找完成`);
 
   await stopSearching();
 }

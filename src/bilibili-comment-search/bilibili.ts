@@ -133,7 +133,7 @@ interface CommentRepliesReqParams extends ReqParams {
   root: string,
   ps: string,
   pn: string,
-}
+};
 
 async function fetchComments(params: CommentsReqParams): Promise<RespData | null> {
   const resp = await fetch(

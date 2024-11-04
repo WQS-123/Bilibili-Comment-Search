@@ -1,5 +1,6 @@
 import { fetchAllCommentReplies, getOid, ReplyInfo } from "@/bilibili-comment-search/bilibili";
 import { BiliApi, BiliCommentType, BiliSvg } from "@/bilibili-comment-search/constants";
+import { match } from "@/bilibili-comment-search/core";
 
 function createCommentButton(text: string): HTMLElement {
   let button = document.createElement('Bilibili-Comment-Button');
@@ -47,11 +48,30 @@ function createCommentContainer(): HTMLElement {
   return container;
 }
 
-async function createComment(info: ReplyInfo): Promise<[HTMLElement, number]> {
+async function createComment(info: ReplyInfo, options: CommentSearchOptions | null): Promise<[HTMLElement, number, CommentSearchOptionsIsOk]> {
   let comment = document.createElement('div');
-  let count = 1;
+  let count = 1, show: CommentSearchOptionsIsOk = { onlyup: false, regexp: false };
   let noteHTML = ``;
   let pictureHTML = ``;
+  let upHTML = ``;
+
+  if (options && options.match == '') {
+    show.regexp = true;
+  }
+  if (options && options.match != '') {
+    let messageMatched = match(info.content.message, options.pattern!);
+    let unameMatched = match(info.member.uname, options.pattern!);
+
+    if (messageMatched != '') {
+      info.content.message = messageMatched;
+      show.regexp = true;
+    }
+    if (unameMatched != '') {
+      info.member.uname = unameMatched;
+      show.regexp = true;
+    }
+  }
+
   let richText = info.content.message
     .replace(/\[(.*?)\]/g, (match, text) => {
       return info.content.emote && info.content.emote.hasOwnProperty(`[${text}]`)
@@ -62,7 +82,6 @@ async function createComment(info: ReplyInfo): Promise<[HTMLElement, number]> {
         ? `<a href="${BiliApi.space + info.content.at_name_to_mid[`${text}`]}" style="color: #008AC5">@${text} </a>`
         : match;
     });
-  let upHTML = ``;
 
   if (info.type == BiliCommentType.note) {
     noteHTML = `
@@ -148,6 +167,12 @@ async function createComment(info: ReplyInfo): Promise<[HTMLElement, number]> {
     <div class="bcs-div"></div>
   `;
 
+  if (options && options.onlyup) {
+    if (info.mid == options.mid) {
+      show.onlyup = true;
+    }
+  }
+
   if (info.replies && info.replies.length > 0) {
     let expander = comment.getElementsByClassName('bcs-expander')[0] as HTMLElement
     expander.style.display = 'block';
@@ -161,11 +186,18 @@ async function createComment(info: ReplyInfo): Promise<[HTMLElement, number]> {
     })
 
     for (let reply of replies) {
-      comment.getElementsByClassName('bcs-replies')[0]
-        .appendChild(createRepliesComment(ReplyInfo.fromReply(reply)));
+      const info = ReplyInfo.fromReply(reply);
+      const [element, isOk] = createRepliesComment(info, options);
+
+      comment.getElementsByClassName('bcs-replies')[0].appendChild(element);
+      if (options && info.mid == options.mid) {
+        show.onlyup = true;
+      }
+      if (isOk.regexp) {
+        show.regexp = true;
+      }
     }
 
-    console.log(replies);
     count += replies.length;
   }
 
@@ -175,6 +207,7 @@ async function createComment(info: ReplyInfo): Promise<[HTMLElement, number]> {
     .addEventListener('click', () => {
       let replies = comment.getElementsByClassName('bcs-replies')[0] as HTMLElement;
       let display = replies.style.display;
+      console.log(display);
 
       if (display == 'none') {
         replies.style.display = 'block';
@@ -186,11 +219,31 @@ async function createComment(info: ReplyInfo): Promise<[HTMLElement, number]> {
       }
     });
 
-  return [comment, count];
+  return [comment, count, show];
 }
 
-function createRepliesComment(info: ReplyInfo): HTMLElement {
+function createRepliesComment(info: ReplyInfo, options: CommentSearchOptions | null): [HTMLElement, CommentSearchOptionsIsOk] {
   let comment = document.createElement('div');
+  let show: CommentSearchOptionsIsOk = { onlyup: false, regexp: false };
+  let upHTML = ``;
+
+  if (options && options.match == '') {
+    show.regexp = true;
+  }
+  if (options && options.match != '') {
+    let messageMatched = match(info.content.message, options.pattern!);
+    let unameMatched = match(info.member.uname, options.pattern!);
+
+    if (messageMatched != '') {
+      info.content.message = messageMatched;
+      show.regexp = true;
+    }
+    if (unameMatched != '') {
+      info.member.uname = unameMatched;
+      show.regexp = true;
+    }
+  }
+
   let richText = info.content.message
     .replace(/\[(.*?)\]/g, (match, text) => {
       return info.content.emote && info.content.emote.hasOwnProperty(`[${text}]`)
@@ -201,7 +254,6 @@ function createRepliesComment(info: ReplyInfo): HTMLElement {
         ? `<a href="${BiliApi.space + info.content.at_name_to_mid[`${text}`]}" style="color: #008AC5">@${text} </a>`
         : match;
     });
-  let upHTML = ``;
 
   if (info.up) {
     upHTML = `<img width="24" height="24" src="${BiliApi.up}" />`
@@ -235,7 +287,7 @@ function createRepliesComment(info: ReplyInfo): HTMLElement {
     </div>
   `;
 
-  return comment;
+  return [comment, show];
 }
 
 function setProgress(search: HTMLElement, text: string) {
@@ -248,6 +300,13 @@ interface CommentSearchOptions {
   onlyup: boolean,
   regexp: boolean,
   match: string,
+  mid: number,
+  pattern: RegExp | null,
+}
+
+interface CommentSearchOptionsIsOk {
+  onlyup: boolean,
+  regexp: boolean,
 }
 
 function getSearchOptions(search: HTMLElement): CommentSearchOptions {
@@ -259,6 +318,8 @@ function getSearchOptions(search: HTMLElement): CommentSearchOptions {
     onlyup: onlyup.checked,
     regexp: regexp.checked,
     match: match.value,
+    mid: 0,
+    pattern: null,
   };
 }
 

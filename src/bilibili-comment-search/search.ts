@@ -19,19 +19,23 @@ const searchSearch: SearchFunction = async (container: HTMLElement, search: HTML
   };
   let total = 0, count = 0;
   let options = getSearchOptions(search);
-  let pattern: RegExp;
 
   if (options.regexp) {
     try {
-      pattern = new RegExp(options.match, 'g');
+      options.pattern = new RegExp(options.match, 'g');
     } catch (e) {
       setProgress(search, `正则表达式错误，请使用 js 正则表达式：https://www.runoob.com/js/js-regexp.html`);
       return;
     }
   }
-  else {
-    pattern = new RegExp(options.match, 'g');
+  else if (options.match == '') {
+    options.pattern = new RegExp(/.*/, 'g');
   }
+  else {
+    options.pattern = new RegExp(options.match, 'g');
+  }
+
+  setProgress(search, `开始搜索`);
 
   await startSearching();
 
@@ -46,27 +50,21 @@ const searchSearch: SearchFunction = async (container: HTMLElement, search: HTML
     for (let reply of replies) {
       let info = ReplyInfo.fromReply(reply);
 
+      options.mid = data.upper.mid;
       info.up = data.upper.mid == info.mid;
 
-      if (options.onlyup && info.up == false) {
-        return;
-      }
+      let [element, number, isOk] = await createComment(info, options);
 
-      let [element, number] = await createComment(info);
-
-      if (options.match != '') {
-        element.innerHTML = match(element.innerHTML, pattern);
+      if (!((options.onlyup && !isOk.onlyup) || !isOk.regexp)) {
+        container.appendChild(element);
       }
-      container.appendChild(element);
 
       count += number;
-      console.log(number, count);
+      setProgress(search, `${count} | ${total}`);
     }
 
     total = data.page.acount;
     params.pn = (parseInt(params.pn, 10) + 1).toString();
-
-    setProgress(search, `${count} | ${total}`);
 
     await new Promise(resolve => setTimeout(resolve, 500));
   } while (true);

@@ -1,4 +1,4 @@
-import { createCommentButtonDivider, createCommentContainer, createCommentSearch } from "@/bilibili-comment-search/components";
+import { createCommentButtonDivider, createCommentContainer, createCommentSearch, setProgress } from "@/bilibili-comment-search/components";
 import { BiliButtonColor } from './constants';
 
 interface SwitchFunction {
@@ -258,7 +258,10 @@ function injectCommentButtons(
     sortActions.appendChild(createCommentButtonDivider());
     sortActions.appendChild(bundle.button);
   }
-  search.querySelector('#bcs-search-end')?.addEventListener('click', stopSearching);
+  search.querySelector('#bcs-search-stop')?.addEventListener('click', () => {
+    stopSearching();
+    setProgress(search, `已经停止搜索了哦，麻烦不要多次点击啦 ^_-`);
+  });
 
   // 为 #sort-actions 的所有按钮添加点击切换颜色 & 切换 feed 的操作
   for (let node of sortActions.childNodes) {
