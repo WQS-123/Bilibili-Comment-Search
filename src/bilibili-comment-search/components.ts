@@ -28,7 +28,7 @@ function createCommentSearch(): HTMLElement {
       </div>
       <div class="bcs-search-options">
         <label>
-          <input type="checkbox" id="bcs-search_onlyup" /> 只看up
+          <input type="checkbox" id="bcs-search__onlyup" /> 只看up
         </label>
         <label>
           <input type="checkbox" id="bcs-search__regexp" /> 正则模式
@@ -43,6 +43,7 @@ function createCommentSearch(): HTMLElement {
 function createCommentsContainer(): HTMLElement {
   let container = document.createElement('div');
   container.style.display = 'none';
+  container.style.marginBottom = '40px';
   return container;
 }
 
@@ -248,12 +249,19 @@ function setProgress(search: HTMLElement, text: string) {
 interface CommentSearchOptions {
   onlyup: boolean,
   regexp: boolean,
-  expand: boolean,
+  match: string,
 }
 
-function getSearchOptions(search: HTMLElement) {
+function getSearchOptions(search: HTMLElement): CommentSearchOptions {
+  let onlyup = search.querySelector('#bcs-search__onlyup') as HTMLInputElement;
+  let regexp = search.querySelector('#bcs-search__regexp') as HTMLInputElement;
+  let match = search.querySelector('#bcs-search') as HTMLInputElement;
 
+  return {
+    onlyup: onlyup.checked,
+    regexp: regexp.checked,
+    match: match.value,
+  };
 }
 
-export { createButtonDivider, createComment, createCommentButton, createCommentsContainer, createCommentSearch, createReplyComment, setProgress };
-
+export { createButtonDivider, createComment, createCommentButton, createCommentsContainer, createCommentSearch, createReplyComment, setProgress, getSearchOptions };

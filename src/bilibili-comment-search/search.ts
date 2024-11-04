@@ -1,7 +1,6 @@
 import { CommentInfo, CommentSearchParams, fetchComments, getOid, Reply } from '@/bilibili-comment-search/bilibili';
-import { createCommentButton, createComment, setProgress } from '@/bilibili-comment-search/components';
-import { BiliCommentType } from '@/bilibili-comment-search/constants';
-import { SwitchFunction, SearchFunction, startSearching, stopSearching, isSearching, CommentBundle } from '@/bilibili-comment-search/core';
+import { createCommentButton, createComment, setProgress, getSearchOptions } from '@/bilibili-comment-search/components';
+import { SwitchFunction, SearchFunction, match, startSearching, stopSearching, isSearching, CommentBundle } from '@/bilibili-comment-search/core';
 
 const searchSwitch: SwitchFunction = async (container: HTMLElement, search: HTMLElement) => {
   container.innerHTML = ``;
@@ -9,6 +8,8 @@ const searchSwitch: SwitchFunction = async (container: HTMLElement, search: HTML
 }
 
 const searchSearch: SearchFunction = async (container: HTMLElement, search: HTMLElement) => {
+  container.innerHTML = ``;
+
   let param: CommentSearchParams = {
     oid: getOid()!,
     type: 1,
@@ -17,6 +18,20 @@ const searchSearch: SearchFunction = async (container: HTMLElement, search: HTML
     ps: 20,
   };
   let total = 0, count = 0;
+  let options = getSearchOptions(search);
+  let pattern: RegExp;
+
+  if (options.regexp) {
+    try {
+      pattern = new RegExp(options.match, 'g');
+    } catch (e) {
+      setProgress(search, `正则表达式错误，请使用 js 正则表达式：https://www.runoob.com/js/js-regexp.html`);
+      return;
+    }
+  }
+  else {
+    pattern = new RegExp(options.match, 'g');
+  }
 
   await startSearching();
 
@@ -30,11 +45,21 @@ const searchSearch: SearchFunction = async (container: HTMLElement, search: HTML
 
     replies.forEach(reply => {
       let info = CommentInfo.fromReply(reply);
-      
+
       info.up = data.upper.mid == info.mid;
-      container.appendChild(createComment(info));
+
+      if (options.onlyup && info.up == false) {
+        return;
+      }
+
+      let element = createComment(info);
+      if (options.match != '') {
+        element.innerHTML = match(element.innerHTML, pattern);
+      }
+      container.appendChild(element);
 
       count += 1 + (reply.replies.length ?? 0);
+      console.log(count);
     });
 
     total = data.page.acount;
@@ -45,7 +70,7 @@ const searchSearch: SearchFunction = async (container: HTMLElement, search: HTML
     await new Promise(resolve => setTimeout(resolve, 500));
   } while (true);
 
-  setProgress(search, `${total} | ${total} 查找完成`);
+  setProgress(search, `${count} | ${total} 查找完成`);
 
   await stopSearching();
 }

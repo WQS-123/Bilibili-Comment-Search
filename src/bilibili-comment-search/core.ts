@@ -414,5 +414,4 @@ function match(content: string, pattern: RegExp): string {
   return '';
 }
 
-export { CommentBundle, injectCommentButton, isSearching, SearchFunction, startSearching, stopSearching, SwitchFunction };
-
+export { CommentBundle, injectCommentButton, match, isSearching, SearchFunction, startSearching, stopSearching, SwitchFunction };
