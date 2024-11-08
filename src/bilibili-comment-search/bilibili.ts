@@ -156,8 +156,6 @@ async function fetchComments(params: CommentsReqParams): Promise<ReplyInfo[] | n
     return null;
   }
 
-  console.log(body.data.replies);
-
   if (body.data.top_replies && params.pn === '1') {
     body.data.replies.unshift(...body.data.top_replies);
   }

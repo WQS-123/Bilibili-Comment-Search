@@ -56,6 +56,9 @@ function createCommentSearchStyle(): HTMLStyleElement {
       gap: 15px;
       margin-top: 10px;
     }
+    #bcs-search {
+      width: 300px;
+    }
   `;
 
   return style;
