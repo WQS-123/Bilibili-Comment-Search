@@ -25,7 +25,8 @@ class ContentInfo {
     public at_name_to_mid: Record<any, any>| undefined,
     public message: string,
     public emote: Record<any, any> | undefined,
-    public pictures: any[] | undefined
+    public pictures: any[] | undefined,
+    public jump_url: string | undefined
   ) {}
 
   static fromResp(reply: RespReply) {
@@ -34,6 +35,7 @@ class ContentInfo {
       reply.content.message,
       reply.content.emote,
       reply.content.pictures,
+      Object.keys(reply.content.jump_url).at(0)
     );
   }
 }
@@ -153,6 +155,8 @@ async function fetchComments(params: CommentsReqParams): Promise<ReplyInfo[] | n
     console.error(`获取评论区数据失败: ${body.message}`);
     return null;
   }
+
+  console.log(body.data.replies);
 
   if (body.data.top_replies && params.pn === '1') {
     body.data.replies.unshift(...body.data.top_replies);

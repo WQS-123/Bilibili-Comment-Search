@@ -240,7 +240,7 @@ function createCommentSearch(): HTMLElement {
 function createCommentContainer(): HTMLElement {
   let container = document.createElement('div');
   container.style.display = 'none';
-  container.style.marginBottom = '40px';
+  container.style.marginBottom = '80px';
   return container;
 }
 
@@ -296,6 +296,10 @@ function createPictureHTML(pictures: any): string {
   return result += `</div>`;
 }
 
+function createNoteLinkHTML(link: string): string {
+  return `<a href="${link}" target="_blank" style="color: #00AEEC;">展开</a>`;
+}
+
 function createRichTextHTML(info: ReplyInfo): string {
   return info.content.message
     .replace(/\[(.*?)\]/g, (match, text) => {
@@ -314,6 +318,7 @@ function createComment(info: ReplyInfo): HTMLElement {
   let upHTML = ``;
   let noteHTML = ``;
   let pictureHTML = ``;
+  let noteLinkHTML = ``;
   let richTextHTML = createRichTextHTML(info);
 
   if (info.isUp) {
@@ -324,6 +329,9 @@ function createComment(info: ReplyInfo): HTMLElement {
     noteHTML = createNoteHTML();
     if (info.content.pictures) {
       pictureHTML = createPictureHTML(info.content.pictures);
+    }
+    if (info.content.jump_url) {
+      noteLinkHTML = createNoteLinkHTML(info.content.jump_url);
     }
   }
 
@@ -339,7 +347,7 @@ function createComment(info: ReplyInfo): HTMLElement {
         ${upHTML}
       </div>
       <div class="bcs-content">
-        <span>${noteHTML}${richTextHTML}</span>
+        <span>${noteHTML}${richTextHTML}${noteLinkHTML}</span>
         ${pictureHTML}
       </div>
       <div class="bcs-footer bsc-footer-0">
