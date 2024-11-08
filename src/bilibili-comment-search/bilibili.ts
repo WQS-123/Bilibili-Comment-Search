@@ -1,20 +1,17 @@
-import { BiliApi, BiliCommentType } from "@/bilibili-comment-search/constants";
+import { BiliApi } from "@/bilibili-comment-search/constants";
 
+type Resp = any
 type RespData = any;
-type Reply = any;
+type RespReply = any;
 
 class MemberInfo {
-  avatar: string
-  level: number
-  uname: string
+  constructor(
+    public avatar: string,
+    public level: number,
+    public uname: string
+  ) {}
 
-  constructor(avatar: string, level: number, uname: string) {
-    this.avatar = avatar;
-    this.level = level;
-    this.uname = uname;
-  }
-
-  static fromReply(reply: Reply) {
+  static fromResp(reply: RespReply) {
     return new MemberInfo(
       reply.member.avatar,
       reply.member.level_info.current_level,
@@ -24,19 +21,14 @@ class MemberInfo {
 }
 
 class ContentInfo {
-  at_name_to_mid: Record<any, any> | null
-  message: string
-  emote: Record<any, any> | undefined
-  pictures: any[] | undefined
+  constructor(
+    public at_name_to_mid: Record<any, any>| undefined,
+    public message: string,
+    public emote: Record<any, any> | undefined,
+    public pictures: any[] | undefined
+  ) {}
 
-  constructor(at_name_to_mid: Record<any, any>| null, message: string, emote: Record<any, any>, pictures: any[]) {
-    this.at_name_to_mid = at_name_to_mid;
-    this.message = message;
-    this.emote = emote;
-    this.pictures = pictures;
-  }
-
-  static fromReply(reply: Reply) {
+  static fromResp(reply: RespReply) {
     return new ContentInfo(
       reply.content.at_name_to_mid,
       reply.content.message,
@@ -46,75 +38,73 @@ class ContentInfo {
   }
 }
 
-class ReplyInfo {
-  type: BiliCommentType
-  up: boolean
-  ctime: number
-  content: ContentInfo
-  like: number
-  member: MemberInfo
-  mid: number
-  replies: ReplyInfo[] | null
-  rpid: number
+class ReplyControlInfo {
+  constructor(
+    public sub_reply_entry_text: string | undefined,
+    public up_like: boolean | undefined,
+    public up_reply: boolean | undefined
+  ) {}
 
-  constructor(type: BiliCommentType, ctime: number, content: ContentInfo, like: number, member: MemberInfo, mid: number, replies: ReplyInfo[] | null, rpid: number) {
-    this.up = false;
-    this.type = type;
-    this.ctime = ctime;
-    this.content = content;
-    this.like = like;
-    this.member = member;
-    this.mid = mid;
-    this.replies = replies;
-    this.rpid = rpid;
+  static fromResp(reply: RespReply) {
+    return new ReplyControlInfo(
+      reply.reply_control.sub_reply_entry_text,
+      reply.reply_control.up_like,
+      reply.reply_control.up_reply
+    );
   }
+}
 
-  static fromReply(reply: Reply) {
-    let type = BiliCommentType.noraml;
+const enum ReplyType {
+  none = 0,
+  note = 1,
+}
+
+class ReplyInfo {
+  constructor(
+    public type: ReplyType,
+    public isUp: boolean,
+    public total: number,
+    public time: string,
+    public content: ContentInfo,
+    public like: number,
+    public member: MemberInfo,
+    public mid: number,
+    public replies: ReplyInfo[] | null,
+    public replyControl: ReplyControlInfo,
+    public rpid_str: string
+  ) {}
+
+  static fromResp(reply: RespReply, data: RespData) {
+    let type = ReplyType.none;
+    let isUp = data.upper.mid == reply.mid;
+    let total = data.page.acount;
+    let time = new Date(reply.ctime * 1000).toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).replace(/\//g, '-');
 
     if ('note_cvid' in reply || reply.note_cvid_str != '0') {
-      type = BiliCommentType.note;
+      type = ReplyType.note;
     }
 
     return new ReplyInfo(
       type,
-      reply.ctime,
-      ContentInfo.fromReply(reply),
+      isUp,
+      total,
+      time,
+      ContentInfo.fromResp(reply),
       reply.like,
-      MemberInfo.fromReply(reply),
+      MemberInfo.fromResp(reply),
       reply.mid,
       reply.replies,
-      reply.rpid,
+      ReplyControlInfo.fromResp(reply),
+      reply.rpid_str,
     );
   }
-
-  getTime() {
-    return new Date(this.ctime * 1000)
-      .toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      }).replace(/\//g, '-');
-  }
-}
-
-function getBV(): string | undefined {
-  let url = window.location.href;
-  let match = url.match(/BV[a-zA-Z0-9]+/);
-
-  if (!match) {
-    console.error('未找到 bv 号');
-    return;
-  }
-
-  return match[0];
-}
-
-function getOid(): string | undefined {
-  return getBV();
 }
 
 type ReqParams = Record<string, string>;
@@ -135,15 +125,29 @@ interface CommentRepliesReqParams extends ReqParams {
   pn: string,
 };
 
-async function fetchComments(params: CommentsReqParams): Promise<RespData | null> {
+function getBV(): string | undefined {
+  let url = window.location.href;
+  let match = url.match(/BV[a-zA-Z0-9]+/);
+
+  if (!match) {
+    console.error('未找到 bv 号');
+    return;
+  }
+
+  return match[0];
+}
+
+function getOid(): string | undefined {
+  return getBV();
+}
+
+async function fetchComments(params: CommentsReqParams): Promise<ReplyInfo[] | null> {
   const resp = await fetch(
     `${BiliApi.comments}?${new URLSearchParams(params).toString()}`,
-    {
-      method: "GET",
-      credentials: 'include'
-    }
+    { method: "GET", credentials: 'include' }
   );
-  const body = await resp.json();
+  const body: Resp = await resp.json();
+  let result: ReplyInfo[] = [];
 
   if (body.code != 0) {
     console.error(`获取评论区数据失败: ${body.message}`);
@@ -154,66 +158,78 @@ async function fetchComments(params: CommentsReqParams): Promise<RespData | null
     body.data.replies.unshift(...body.data.top_replies);
   }
 
-  return body.data;
+  if (body.data.replies.length == 0) {
+    return null;
+  }
+
+  for (let reply of body.data.replies) {
+    result.push(ReplyInfo.fromResp(reply, body.data));
+  }
+
+  return result;
 }
 
-async function fetchCommentReplies(params: CommentRepliesReqParams): Promise<RespData | null> {
+async function fetchCommentReplies(params: CommentRepliesReqParams): Promise<ReplyInfo[] | null> {
   const resp = await fetch(
     `${BiliApi.commentReplies}?${new URLSearchParams(params).toString()}`,
-    {
-      method: "GET",
-      credentials: 'include'
-    }
+    { method: "GET", credentials: 'include' }
   );
   const body = await resp.json();
+  let result: ReplyInfo[] = [];
 
   if (body.code != 0) {
     console.error(`获取评论的评论区数据失败: ${body.message}`);
     return null;
   }
 
-  return body.data;
-}
+  if (body.data.replies.length == 0) {
+    return null;
+  }
 
-async function fetchAllComments(params: CommentsReqParams): Promise<Reply[]> {
-  let result: Reply[] = [];
-
-  do {
-    let data = await fetchComments(params);
-    let replies = data.replies as Reply[];
-
-    if (replies.length == 0) {
-      break;
-    }
-
-    result.push(...replies);
-    params.pn = (parseInt(params.pn, 10) + 1).toString();
-
-    await new Promise(resolve => setTimeout(resolve, 500));
-  } while (true);
+  for (let reply of body.data.replies) {
+    result.push(ReplyInfo.fromResp(reply, body.data));
+  }
 
   return result;
 }
 
-async function fetchAllCommentReplies(params: CommentRepliesReqParams): Promise<Reply[]> {
-  let result: Reply[] = [];
+async function fetchAllComments(params: CommentsReqParams): Promise<RespReply[]> {
+  let result: ReplyInfo[] = [];
 
-  do {
-    let data = await fetchCommentReplies(params);
-    let replies = data.replies as Reply[];
+  while (true) {
+    let replyInfoList = await fetchComments(params);
 
-    if (replies.length == 0) {
+    if (replyInfoList == null) {
       break;
     }
 
-    result.push(...replies);
+    result.push(...replyInfoList);
     params.pn = (parseInt(params.pn, 10) + 1).toString();
 
     await new Promise(resolve => setTimeout(resolve, 500));
-  } while (true);
+  }
 
   return result;
 }
 
-export { RespData, Reply, ReplyInfo, CommentsReqParams, CommentRepliesReqParams };
+async function fetchAllCommentReplies(params: CommentRepliesReqParams): Promise<RespReply[]> {
+  let result: ReplyInfo[] = [];
+
+  while (true) {
+    let replyInfoList = await fetchCommentReplies(params);
+
+    if (replyInfoList == null) {
+      break;
+    }
+
+    result.push(...replyInfoList);
+    params.pn = (parseInt(params.pn, 10) + 1).toString();
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+
+  return result;
+}
+
+export { ReplyType, ReplyInfo, CommentsReqParams, CommentRepliesReqParams };
 export { getOid, fetchComments, fetchCommentReplies, fetchAllComments, fetchAllCommentReplies };

@@ -1,4 +1,4 @@
-import { createCommentButtonDivider, createCommentContainer, createCommentSearch, setProgress } from "@/bilibili-comment-search/components";
+import { createCommentButtonStyle, createCommentContainerStyle, createCommentSearchStyle, createCommentButtonDivider, createCommentContainer, createCommentSearch, setProgress } from "@/bilibili-comment-search/components";
 import { BiliButtonColor } from './constants';
 
 interface SwitchFunction {
@@ -13,203 +13,6 @@ interface CommentBundle {
   button: HTMLElement,
   switch: SwitchFunction,
   search: SearchFunction,
-}
-
-function injectCommentButtonStyle(shadowRoot: ShadowRoot) {
-  const style = document.createElement('style');
-
-  // 参考“最新|最热”的元素样式
-  style.textContent = `
-    bilibili-comment-button {
-      color: ${BiliButtonColor.unclicked};
-      height: 28px;
-      padding: 0px 6px;
-      font-size: 13px;
-    }
-    bilibili-comment-button:hover {
-      color: ${BiliButtonColor.hover} !important;
-      cursor: pointer;
-    }
-  `;
-
-  shadowRoot.appendChild(style);
-}
-
-function injectCommentSearchStyle(shadowRoot: ShadowRoot) {
-  const style = document.createElement('style');
-
-  // 参考“最新|最热”的元素样式
-  style.textContent = `
-    .bcs-search-container {
-      padding-left: 80px;
-      font-size: 15px;
-      line-height: 24px;
-      color: #18191C;
-    }
-    .bcs-search-main {
-      display: flex;
-      flex-direction: column;
-    }
-    .bcs-search-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin: 10px 0px;
-    }
-    .bcs-search-header button {
-      cursor: pointer;
-    }
-    .bcs-search-header input, .bcs-search-header button {
-      padding: 0px 10px;
-      border-radius: 5px;
-      height: 20px;
-      border: 1px solid #9e9e9e;
-    }
-    .bcs-search-options {
-      display: flex;
-      gap: 15px;
-      margin-top: 10px;
-    }
-  `;
-
-  shadowRoot.appendChild(style);
-}
-
-function injectCommentContainerStyle(shadowRoot: ShadowRoot) {
-  const style = document.createElement('style');
-
-  style.textContent = `
-    span {
-      display: inline-block;
-      word-break: break-all;
-    }
-    .bcs-container {
-      position: relative;
-    }
-    .bcs-container a {
-      text-decoration: none;
-      color: inherit;
-    }
-    .bcs-container a:hover {
-      cursor: pointer;
-    }
-    .bcs-avatar {
-      position: absolute;
-      transform-origin: left top;
-      transform: var(--bili-comments-avatar-size);
-      z-index: 10;
-    }
-    .bcs-avatar img:hover {
-      cursor: pointer;
-    }
-    .bcs-avatar img {
-      border-radius: 50%;
-      z-index: 10;
-    }
-    .bcs-avatar-0 {
-      left: 20px;
-      top: 22px;
-      width: 48px;
-      height: 48px;
-    }
-    .bcs-avatar-1 {
-      padding: 16px 0px 8px;
-      width: 24px;
-      height: 24px;
-    }
-    .bcs-avatar-0 img {
-      width: 48px;
-      height: 48px;
-    }
-    .bcs-avatar-1 img {
-      width: 24px;
-      height: 24px;
-    }
-    .bcs-main {
-      position: relative;
-    }
-    .bcs-main-0 {
-      padding-left: 80px;
-      padding-top: 22px;
-    }
-    .bcs-main-1 {
-      padding: 8px 0 8px 34px;
-    }
-    .bcs-header {
-    }
-    .bcs-header-0 {
-      display: inline-flex;
-      align-items: center;
-      margin-bottom: 4px;
-    }
-    .bcs-header-1 {
-      display: block;
-      align-items: center;
-      margin-bottom: 0px;
-    }
-    .bcs-uname {
-      color: #61666D;
-      font-size: 13px;
-      font-weight: 500;
-    }
-    .bcs-level {
-      margin-left: 5px;
-    }
-    .bcs-level-0 {
-      width: 30px;
-      height: 30px;
-    }
-    .bcs-level-1 {
-      width: 30px;
-      height: 30px;
-    }
-    .bcs-content {
-      font-size: 15px;
-      line-height: 24px;
-      color: #18191C;
-    }
-    .bcs-note {
-      width: 48px;
-      height: 22px;
-      display: inline-flex;
-      justify-content: center;
-      align-items: center;
-      border-radius: 4px;
-      color: #9499A0;
-      background-color: #F6F7F8;
-      vertical-align: text-bottom;
-      font-size: 12px;
-      font-style: normal;
-    }
-    .bcs-footer {
-      display: flex;
-      align-items: center;
-      position: relative;
-      font-size: 13px;
-      color: #9499A0;
-    }
-    .bcs-footer-0 {
-      margin-top: 10px;
-    }
-    .bcs-footer-1 {
-      margin-top: 0px;
-    }
-    .bcs-footer div {
-      display: flex;
-      align-items: center;
-    }
-    .bcs-expander {
-      margin-top: 4px;
-      color: #9499A0;
-    }
-    .bcs-div {
-      padding-bottom: 14px;
-      margin-left: 80px;
-      border-bottom: 1px solid #E3E5E7;
-    }
-  `;
-
-  shadowRoot.appendChild(style);
 }
 
 function injectCommentButtons(
@@ -336,13 +139,13 @@ function injectCommentButton(buttonBundleList: CommentBundle[]) {
 
                 if (sortActions) {
                   // shadowRoot 插入按钮样式
-                  injectCommentButtonStyle(header.shadowRoot!);
+                  header.shadowRoot!.appendChild(createCommentButtonStyle());
 
                   // shadowRoot 插入搜索选项区样式
-                  injectCommentSearchStyle(comments.shadowRoot!);
+                  comments.shadowRoot!.appendChild(createCommentSearchStyle());
 
                   // shadowRoot 插入评论区样式
-                  injectCommentContainerStyle(comments.shadowRoot!);
+                  comments.shadowRoot!.appendChild(createCommentContainerStyle());
 
                   const contents = comments.shadowRoot?.querySelector('#contents');
                   const continuations = comments.shadowRoot?.querySelector('#continuations');

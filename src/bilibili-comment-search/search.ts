@@ -1,5 +1,5 @@
-import { CommentsReqParams, fetchComments, getOid, Reply, ReplyInfo } from '@/bilibili-comment-search/bilibili';
-import { createComment, createCommentButton, getSearchOptions, setProgress } from '@/bilibili-comment-search/components';
+import { CommentsReqParams, fetchComments, fetchAllCommentReplies, getOid } from '@/bilibili-comment-search/bilibili';
+import { appendReplyToComment, createComment, createCommentButton, createCommentReply, getCommentSearchOptions, setProgress, showCommentReplies } from '@/bilibili-comment-search/components';
 import { CommentBundle, isSearching, match, SearchFunction, startSearching, stopSearching, SwitchFunction } from '@/bilibili-comment-search/core';
 
 const searchSwitch: SwitchFunction = async (container: HTMLElement, search: HTMLElement) => {
@@ -18,59 +18,115 @@ const searchSearch: SearchFunction = async (container: HTMLElement, search: HTML
     pn: '1',
   };
   let total = 0, count = 0;
-  let options = getSearchOptions(search);
+  let options = getCommentSearchOptions(search);
+  let pattern = null;
 
-  if (options.regexp) {
+  if (options.match != '') {
     try {
-      options.pattern = new RegExp(options.match, 'g');
+      pattern = new RegExp(options.match, 'g');
     } catch (e) {
       setProgress(search, `正则表达式错误，请使用 js 正则表达式：https://www.runoob.com/js/js-regexp.html`);
       return;
     }
   }
-  else if (options.match == '') {
-    options.pattern = new RegExp(/.*/, 'g');
-  }
-  else {
-    options.pattern = new RegExp(options.match, 'g');
-  }
 
   setProgress(search, `开始搜索`);
-
   await startSearching();
 
-  do {
-    let data = await fetchComments(params);
-    let replies = data.replies as Reply[];
+  while (true) {
+    let commentInfoList = await fetchComments(params);
 
-    if (replies.length == 0 || !await isSearching()) {
+    if (commentInfoList == null || !await isSearching()) {
       break;
     }
 
-    for (let reply of replies) {
-      let info = ReplyInfo.fromReply(reply);
-
-      options.mid = data.upper.mid;
-      info.up = data.upper.mid == info.mid;
-
-      let [element, number, isOk] = await createComment(info, options);
-
-      if (!((options.onlyup && !isOk.onlyup) || !isOk.regexp)) {
-        container.appendChild(element);
+    for (let commentInfo of commentInfoList) {
+      if (options.onlyup && !options.replies && !commentInfo.isUp) {
+        continue;
       }
 
-      count += number;
+      if (pattern) {
+        let message = match(commentInfo.content.message, pattern);
+        let uname = match(commentInfo.member.uname, pattern);
+
+        if (message == '' && uname == '') {
+          continue;
+        }
+        if (message != '') {
+          commentInfo.content.message = message;
+        }
+        if (uname != '') {
+          commentInfo.member.uname = uname;
+        }
+      }
+
+      let comment = createComment(commentInfo);
+
+      if (options.replies && commentInfo.replies && commentInfo.replies.length > 0) {
+        const replyInfoList = await fetchAllCommentReplies({
+          oid: params.oid,
+          type: params.type,
+          root: commentInfo.rpid_str,
+          ps: '10',
+          pn: '1',
+        });
+
+        let countPrev = count;
+        for (let replyInfo of replyInfoList) {
+          if (options.onlyup && !replyInfo.isUp) {
+            continue;
+          }
+
+          if (pattern) {
+            let message = match(replyInfo.content.message, pattern);
+            let uname = match(replyInfo.member.uname, pattern);
+
+            if (message == '' && uname == '') {
+              continue;
+            }
+            if (message != '') {
+              replyInfo.content.message = message;
+            }
+            if (uname != '') {
+              replyInfo.member.uname = uname;
+            }
+          }
+
+          let reply = createCommentReply(replyInfo);
+
+          count++;
+          appendReplyToComment(comment, reply);
+        }
+
+        if (countPrev != count) {
+          showCommentReplies(comment, count - countPrev);
+          container.appendChild(comment);
+        }
+        else if (!options.onlyup) {
+          container.appendChild(comment);
+        }
+        else {
+          continue;
+        }
+      }
+      else if (!options.onlyup) {
+        container.appendChild(comment);
+      }
+      else {
+        continue;
+      }
+
+      count++;
+      total = commentInfo.total;
       setProgress(search, `${count} | ${total}`);
     }
 
-    total = data.page.acount;
     params.pn = (parseInt(params.pn, 10) + 1).toString();
 
     await new Promise(resolve => setTimeout(resolve, 500));
-  } while (true);
+  }
 
-  setProgress(search, `${count} | ${total} 查找完成`);
-
+  setProgress(search, `${count} | ${total} 搜索完成`);
   await stopSearching();
 }
 

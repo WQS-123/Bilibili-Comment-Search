@@ -1,6 +1,5 @@
-import { CommentsReqParams, fetchComments, getOid, Reply, ReplyInfo } from '@/bilibili-comment-search/bilibili';
+import { CommentsReqParams, fetchComments, getOid, ReplyInfo, ReplyType } from '@/bilibili-comment-search/bilibili';
 import { createComment, createCommentButton, setProgress } from '@/bilibili-comment-search/components';
-import { BiliCommentType } from '@/bilibili-comment-search/constants';
 import { CommentBundle, isSearching, SearchFunction, startSearching, stopSearching, SwitchFunction } from '@/bilibili-comment-search/core';
 
 const noteSwitch: SwitchFunction = async (container: HTMLElement, search: HTMLElement) => {
@@ -20,36 +19,32 @@ const noteSwitch: SwitchFunction = async (container: HTMLElement, search: HTMLEl
 
   await startSearching();
 
-  do {
-    let data = await fetchComments(params);
-    let replies = data.replies as Reply[];
+  while (true) {
+    let commentInfoList = await fetchComments(params);
 
-    if (replies.length == 0 || !await isSearching()) {
+    if (commentInfoList == null || !await isSearching()) {
       break;
     }
 
-    for (let reply of replies) {
-      let info = ReplyInfo.fromReply(reply);
-      info.up = data.upper.mid == info.mid;
-
-      let [element, number, isOk] = await createComment(info, null);
-
-      if (info.type == BiliCommentType.note) {
-        container.appendChild(element);
+    for (let commentInfo of commentInfoList) {
+      if (commentInfo.type != ReplyType.note) {
+        continue;
       }
 
-      count += number;
+      let comment = createComment(commentInfo);
+
+      count++;
+      total = commentInfo.total;
+      container.appendChild(comment);
       setProgress(search, `${count} | ${total}`);
     }
 
-    total = data.page.acount;
     params.pn = (parseInt(params.pn, 10) + 1).toString();
 
     await new Promise(resolve => setTimeout(resolve, 500));
-  } while (true);
+  }
 
   setProgress(search, `${count} | ${total} 查找完成`);
-
   await stopSearching();
 }
 
