@@ -1,4 +1,4 @@
-import { BiliApi } from "@/bilibili-comment-search/constants";
+import { BiliApi, FetchDelay } from "@/bilibili-comment-search/constants";
 
 type Resp = any
 type RespData = any;
@@ -208,7 +208,7 @@ async function fetchAllComments(params: CommentsReqParams): Promise<RespReply[]>
     result.push(...replyInfoList);
     params.pn = (parseInt(params.pn, 10) + 1).toString();
 
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, FetchDelay.comment));
   }
 
   return result;
@@ -227,7 +227,7 @@ async function fetchAllCommentReplies(params: CommentRepliesReqParams): Promise<
     result.push(...replyInfoList);
     params.pn = (parseInt(params.pn, 10) + 1).toString();
 
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, FetchDelay.replies));
   }
 
   return result;

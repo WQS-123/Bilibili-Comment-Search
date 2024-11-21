@@ -11,6 +11,7 @@ function createCommentButtonStyle(): HTMLStyleElement {
       height: 28px;
       padding: 0px 6px;
       font-size: 13px;
+      vertical-align: middle;
     }
     bilibili-comment-button:hover {
       color: ${BiliButtonColor.hover} !important;
@@ -228,10 +229,10 @@ function createCommentSearch(): HTMLElement {
       </div>
       <div class="bcs-search-options">
         <label>
-          <input type="checkbox" id="bcs-search__onlyup" /> 只看up
+          <input type="checkbox" id="bcs-search__onlyup" /> 只看 up 主
         </label>
         <label>
-          <input type="checkbox" id="bcs-search__replies" /> 查询楼中楼
+          <input type="checkbox" id="bcs-search__replies" /> 查看评论回复
         </label>
       </div>
     </div>

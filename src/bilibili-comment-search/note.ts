@@ -1,5 +1,6 @@
 import { CommentsReqParams, fetchComments, getOid, ReplyInfo, ReplyType } from '@/bilibili-comment-search/bilibili';
 import { createComment, createCommentButton, setProgress } from '@/bilibili-comment-search/components';
+import { FetchDelay } from '@/bilibili-comment-search/constants';
 import { CommentBundle, isSearching, SearchFunction, startSearching, stopSearching, SwitchFunction } from '@/bilibili-comment-search/core';
 
 const noteSwitch: SwitchFunction = async (container: HTMLElement, search: HTMLElement) => {
@@ -41,7 +42,7 @@ const noteSwitch: SwitchFunction = async (container: HTMLElement, search: HTMLEl
 
     params.pn = (parseInt(params.pn, 10) + 1).toString();
 
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, FetchDelay.comment));
   }
 
   setProgress(search, `${count} | ${total} 查找完成`);
