@@ -18,6 +18,7 @@ const searchSearch: SearchFunction = async (container: HTMLElement, search: HTML
     ps: '20',
     pn: '1',
   };
+  let progressIcon = ['⠇', '⠦', '⠴', '⠸', '⠙', '⠋'];
   let count = 0, total = 0;
   let options = getCommentSearchOptions(search);
   let pattern = null;
@@ -43,7 +44,7 @@ const searchSearch: SearchFunction = async (container: HTMLElement, search: HTML
 
     for (let commentInfo of commentInfoList) {
       total = commentInfo.total;
-      setProgress(search, `${++count} | ${commentInfo.total}`);
+      setProgress(search, `${progressIcon[count % progressIcon.length]}  ${++count} | ${commentInfo.total}`);
 
       if (!options.replies) {
         if (options.onlyup && !commentInfo.isUp) {
@@ -102,7 +103,7 @@ const searchSearch: SearchFunction = async (container: HTMLElement, search: HTML
         let replyCount = 0;
 
         for (let replyInfo of replyInfoList) {
-          setProgress(search, `${++count} | ${commentInfo.total}`);
+          setProgress(search, `${progressIcon[count % progressIcon.length]}  ${++count} | ${commentInfo.total}`);
 
           if (options.onlyup && !replyInfo.isUp) {
             continue;
