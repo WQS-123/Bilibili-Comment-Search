@@ -17,17 +17,17 @@ const searchSearch: SearchFunction = async (container: HTMLElement, search: HTML
     ps: '20',
     pn: '1',
   };
-  let total = 0, count = 0;
+  let count = 0, total = 0;
   let options = getCommentSearchOptions(search);
   let pattern = null;
 
-  if (options.match != '') {
-    try {
+  try {
+    if (options.match != '') {
       pattern = new RegExp(options.match, 'g');
-    } catch (e) {
-      setProgress(search, `正则表达式错误，请使用 js 正则表达式：https://www.runoob.com/js/js-regexp.html`);
-      return;
     }
+  } catch (e) {
+    setProgress(search, `正则表达式错误，请使用 js 正则表达式：https://www.runoob.com/js/js-regexp.html`);
+    return;
   }
 
   setProgress(search, `开始搜索`);
@@ -41,28 +41,56 @@ const searchSearch: SearchFunction = async (container: HTMLElement, search: HTML
     }
 
     for (let commentInfo of commentInfoList) {
-      if (options.onlyup && !options.replies && !commentInfo.isUp) {
-        continue;
-      }
+      total = commentInfo.total;
+      setProgress(search, `${++count} | ${commentInfo.total}`);
 
-      if (pattern) {
-        let message = match(commentInfo.content.message, pattern);
-        let uname = match(commentInfo.member.uname, pattern);
-
-        if (message == '' && uname == '') {
+      if (!options.replies) {
+        if (options.onlyup && !commentInfo.isUp) {
           continue;
         }
-        if (message != '') {
-          commentInfo.content.message = message;
+
+        if (pattern) {
+          let message = match(commentInfo.content.message, pattern);
+          let uname = match(commentInfo.member.uname, pattern);
+
+          if (message == '' && uname == '') {
+            continue;
+          }
+          if (message != '') {
+            commentInfo.content.message = message;
+          }
+          if (uname != '') {
+            commentInfo.member.uname = uname;
+          }
         }
-        if (uname != '') {
-          commentInfo.member.uname = uname;
-        }
+
+        container.appendChild(createComment(commentInfo));
       }
+      else {
+        let onlyupOk = false, matchOk = false;
 
-      let comment = createComment(commentInfo);
+        if (!options.onlyup || commentInfo.isUp) {
+          onlyupOk = true;
+        }
 
-      if (options.replies && commentInfo.replies && commentInfo.replies.length > 0) {
+        if (pattern) {
+          let message = match(commentInfo.content.message, pattern);
+          let uname = match(commentInfo.member.uname, pattern);
+
+          if (message != '') {
+            commentInfo.content.message = message;
+            matchOk = true;
+          }
+          if (uname != '') {
+            commentInfo.member.uname = uname;
+            matchOk = true;
+          }
+        }
+        else {
+          matchOk = true;
+        }
+
+        const comment = createComment(commentInfo);
         const replyInfoList = await fetchAllCommentReplies({
           oid: params.oid,
           type: params.type,
@@ -70,11 +98,16 @@ const searchSearch: SearchFunction = async (container: HTMLElement, search: HTML
           ps: '10',
           pn: '1',
         });
+        let replyCount = 0;
 
-        let countPrev = count;
         for (let replyInfo of replyInfoList) {
+          setProgress(search, `${++count} | ${commentInfo.total}`);
+
           if (options.onlyup && !replyInfo.isUp) {
             continue;
+          }
+          else {
+            onlyupOk = true;
           }
 
           if (pattern) {
@@ -84,6 +117,9 @@ const searchSearch: SearchFunction = async (container: HTMLElement, search: HTML
             if (message == '' && uname == '') {
               continue;
             }
+            else {
+              matchOk = true;
+            }
             if (message != '') {
               replyInfo.content.message = message;
             }
@@ -91,34 +127,22 @@ const searchSearch: SearchFunction = async (container: HTMLElement, search: HTML
               replyInfo.member.uname = uname;
             }
           }
+          else {
+            matchOk = true;
+          }
 
-          let reply = createCommentReply(replyInfo);
-
-          count++;
-          appendReplyToComment(comment, reply);
+          replyCount++;
+          appendReplyToComment(comment, createCommentReply(replyInfo));
         }
 
-        if (countPrev != count) {
-          showCommentReplies(comment, count - countPrev);
+        if (replyCount != 0) {
+          showCommentReplies(comment, replyCount);
+        }
+
+        if (onlyupOk && matchOk) {
           container.appendChild(comment);
         }
-        else if (!options.onlyup) {
-          container.appendChild(comment);
-        }
-        else {
-          continue;
-        }
       }
-      else if (!options.onlyup) {
-        container.appendChild(comment);
-      }
-      else {
-        continue;
-      }
-
-      count++;
-      total = commentInfo.total;
-      setProgress(search, `${count} | ${total}`);
     }
 
     params.pn = (parseInt(params.pn, 10) + 1).toString();
