@@ -43,5 +43,5 @@ jobs:
         run: npm run zip
       - uses: ncipollo/release-action@v1
         with:
-          artifacts: "./.output/bilibili-comment-search-0.3.1-chrome.zip"
-          tag: "0.3.1"
+          artifacts: "./.output/bilibili-comment-search-0.3.2-chrome.zip"
+          tag: "0.3.2"

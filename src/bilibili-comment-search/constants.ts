@@ -24,6 +24,6 @@ export const enum BiliSvg {
 };
 
 export const enum FetchDelay {
-  comment = 100,
-  replies = 100,
+  comment = 200,
+  replies = 200,
 };
